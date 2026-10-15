@@ -74,6 +74,7 @@ These are deliberate time-box boundaries, not assumptions that the production co
 | Hard block | GB child chat has an old approval | Hard block remains absolute |
 | Side effects | Browser refresh repeats **Check access** | Evaluation stays read-only; only **Ask a parent** creates or reuses state |
 | Missing coverage | Valid feature/jurisdiction has no rule | Return `blocked / no_matching_policy`; do not disguise a policy gap |
+| Unknown feature | Client sends a feature absent from `policy.features` | Reject as invalid input; it is not a policy-coverage decision |
 
 If the interviewer changes an answer, update this contract and `DECISIONS.md` before implementation continues.
 
@@ -87,6 +88,7 @@ If the interviewer changes an answer, update this contract and `DECISIONS.md` be
 | Evaluation never creates consent | A refresh creates multiple pending requests | Repeated decision-call test |
 | Consent never overrides a hard block | A stale approval unlocks GB child chat | Approved-record + hard-block test |
 | Server owns decision and explanation | Browser and API disagree after a policy update | Route and browser-flow verification |
+| UI state stays bound to the active scenario | Parent acts on child A while the form shows child B | Filter by active subject/scope and test scenario switching |
 
 ## 2. System design
 
@@ -188,6 +190,8 @@ stateDiagram-v2
 | Hard block | Never consult consent to grant access |
 | Exercise record | One mutable logical record per scope; audit history is deferred |
 
+The UI must reflect the same lifecycle. After **Ask a parent**, it immediately shows `pending`, replaces the duplicate action with **Waiting for parent**, and exposes that request only in the active subject's parent panel. A parent action re-evaluates the request's scenario, never an unrelated form state.
+
 Confirm whether production consent should also bind to a policy version, guardian, product, or broader jurisdiction.
 
 ### 2.5 API contract
@@ -198,14 +202,14 @@ REST is proposed because the exercise has a small number of explicit operations.
 |---|---|---|
 | `POST` | `/api/v1/decisions` | Evaluate without creating state |
 | `POST` | `/api/v1/consent-requests` | Re-evaluate eligibility and create/reuse a request |
-| `GET` | `/api/v1/consent-requests` | Populate the trusted parent view |
+| `GET` | `/api/v1/consent-requests?subjectId=...` | Populate the active subject's trusted parent view |
 | `PATCH` | `/api/v1/consent-requests/:id` | Approve, decline, or reverse |
 
 | Operation | Minimal input | Success result |
 |---|---|---|
 | Evaluate | `subjectId`, DOB, jurisdiction, feature | Decision, stable reason, age, matched rule or coverage gap, relevant consent state |
-| Create/reuse | Same scenario fields | Existing or newly pending logical request plus `created` flag |
-| List | No filter in the demo | Current logical requests for the trusted parent panel |
+| Create/reuse | Same scenario fields | `{ request, created, decision }` using the post-create `pending` state |
+| List | Active `subjectId` | Current logical requests for that subject's trusted parent panel |
 | Update | Status is `approved` or `declined` | Updated current representation; repeating the same target is idempotent |
 
 Representative request:
@@ -241,6 +245,7 @@ Proposed transport rules:
 - keep DOB out of paths and query strings;
 - return stable errors for malformed input and missing requests;
 - re-evaluate policy when creating consent instead of trusting a client claim;
+- reject a feature absent from `policy.features`; reserve `no_matching_policy` for a declared feature with no applicable rule;
 - keep business semantics out of route handlers.
 
 Stable error categories are `validation_error`, `consent_not_required`, and `request_not_found`. `no_matching_policy` is deliberately a safe decision reason, not an HTTP transport failure. Exact status codes and payload mechanics may follow the starter conventions, but these meanings must remain stable.
@@ -261,43 +266,46 @@ Stable error categories are `validation_error`, `consent_not_required`, and `req
 
 **Terminology:** “endpoint test” is an informal label; here it means an API integration or route test. A separate component-test layer is intentionally deferred because this UI is a thin workflow. Add React Testing Library only if reusable components or client-side branching become complex enough to justify isolated rendering tests.
 
-For each high-risk milestone, an independent read-only reviewer first derives expected edge cases from the spec and invariants, then inspects the implementation. A valid gap becomes a failing test before the primary agent changes code. The orchestration and correction loop is shown in Section 4.
+For each high-risk milestone, an independent read-only reviewer first derives expected edge cases from the spec and invariants, then inspects the implementation. A valid gap becomes a failing test before the primary agent changes code. Unit, integration, build, and Playwright E2E are all deployment gates; an empty test suite is a failure, not a pass. The orchestration and correction loop is shown in Section 4.
 
 ### 3.2 Work graph
 
 ```mermaid
 flowchart LR
-    W0[W0 Align requirements]
-    W1[W1 Freeze contracts]
-    W2[W2 Policy evaluator]
-    W3[W3 Consent state]
-    W4[W4 Application services]
-    W5[W5 REST transport]
-    W6[W6 One-page UI]
-    W7[W7 Final verification]
-    T[Independent test/review lane]
+    M0[M0 Align]
+    M1[M1 Inspect + plan]
+    M2[M2 Decision core]
+    M3[M3 Consent core]
+    M4[M4 Compose services]
+    M5[M5 REST API]
+    M6[M6 Product UI]
+    M7[M7 Review + deliver]
 
-    W0 --> W1
-    W1 --> W2
-    W1 --> W3
-    W2 --> W4
-    W3 --> W4
-    W4 --> W5
-    W5 --> W6
-    W2 -. cases .-> T
-    W3 -. cases .-> T
-    W5 -. review .-> T
-    W6 --> W7
-    T --> W7
+    M0 --> M1
+    M1 --> M2
+    M1 --> M3
+    M2 --> M4
+    M3 --> M4
+    M4 --> M5 --> M6 --> M7
+    M2 -. read-only critic .-> M4
+    M3 -. read-only critic .-> M4
+    M5 -. read-only critic .-> M6
 ```
 
-**Critical path:** contracts → policy and consent → application service → API → UI → final verification.
+| Milestone | Spec anchor | Deliverable | Execution rule |
+|---|---|---|---|
+| M0 Align | §1 | Confirm semantics, scope, invariants | Human-led; record changes |
+| M1 Inspect + plan | §3.2, §4 | Repository map, file ownership, smallest plan | Read-only; no implementation |
+| M2 Decision core | §2.3 | Policy, calendar age, specificity, unit tests | May run beside M3 on disjoint files |
+| M3 Consent core | §2.4 | Repository, lifecycle, idempotency, tests | May run beside M2 on disjoint files |
+| M4 Compose services | §2.2–2.4 | Decision and consent use cases joined | One writer; M2 and M3 must be complete |
+| M5 REST API | §2.5 | Thin routes, validation, route tests | Sequential after M4 |
+| M6 Product UI | Appendix A | Repeatable child-parent journey and E2E | Sequential after stable API |
+| M7 Review + deliver | §3.1, §3.3, Appendix B.3 | Multi-angle audit, full verification, aligned docs, verified deployment | Stop feature work |
 
-**Safe parallel work:** after contracts freeze, policy and consent may use disjoint files; read-only review and adversarial test derivation may run in parallel.
+**Parallel rule:** only M2 and M3 use independent writer sub-agents, and only after M1 freezes their contracts and non-overlapping files. A read-only critic may derive adversarial cases beside any high-risk milestone. M4–M7 remain sequential because they join or depend on shared state.
 
-**Unsafe parallel work:** multiple writers changing shared contracts, the application join point, or the same invariant.
-
-**Completion evidence by milestone:** domain tests for W2, lifecycle tests for W3, invariant tests for W4, route tests for W5, one visible journey for W6, and tests/build/E2E/diff/docs for W7.
+**Milestone gate:** implement only the named milestone; run focused tests; ask a read-only critic to challenge the relevant invariants and edge cases; turn a valid finding into a failing test and the smallest correction; report evidence and stop for human approval.
 
 ### 3.3 Acceptance criteria
 
@@ -313,8 +321,11 @@ flowchart LR
 | Complete product flow | Browser demonstrates decision → request → parent action → re-evaluation |
 | Explainability | Result shows stable reason and matched rule or coverage gap |
 | Repeatable demo | Selecting a preset creates a fresh synthetic subject and cannot inherit an earlier consent decision |
+| Scenario integrity | Manual input clears preset expectation; parent actions stay bound to the active subject and scope |
+| Pending feedback | Creating/reusing a request immediately shows `pending` and prevents a duplicate action |
 | Scenario clarity | Every preset names its expected outcome and the behavior it demonstrates; server output remains authoritative |
 | Policy transparency | Browser renders the JSON policy as a table, shows the lookup path, and highlights the matched rule |
+| Delivery closure | CI gates deployment on tests, build, and E2E; README, decisions, and AI-use log match the delivered code |
 
 ## 4. AI-assisted working agreement
 
@@ -376,9 +387,9 @@ The page must make three ideas obvious without explanation: what scenario is bei
 
 | Area | Must make visible | Source of truth |
 |---|---|---|
-| Demo cases | Expected outcome and behavior demonstrated | Tested demo metadata |
-| Child/product | Inputs, actual decision, reason, age, matched rule, eligible next action | Decision API |
-| Trusted parent | Current request state and reversible approve/decline actions | Consent API |
+| Demo cases | Expected outcome, actual outcome, match/mismatch, and behavior demonstrated | Tested demo metadata + Decision API |
+| Child/product | Inputs, friendly outcome, stable reason code, age, matched rule, eligible next action | Decision API |
+| Trusted parent | Active subject's request state and reversible approve/decline actions | Consent API |
 | Policy reference | Full configured rules, lookup path, matched row, coverage gap, source file | JSON policy + decision API |
 
 The shared page is only a transparent exercise surface. It does not imply that a child and parent share one authenticated production client.
@@ -398,7 +409,7 @@ Each preset carries inputs, an expected outcome, and a short explanation for pre
 | US teen purchase | `parental_consent` | Feature-specific threshold and consent path |
 | Missing policy coverage | `blocked` | Valid input fails closed with a distinct reason |
 
-Selecting a preset creates a fresh synthetic `subjectId`. This makes every walkthrough repeatable and prevents an earlier consent record from hiding **Ask a parent** or changing the advertised starting result. Manual input may still reuse an ID to demonstrate persistent state within the running process.
+Selecting a preset creates a fresh synthetic `subjectId`. This makes every walkthrough repeatable and prevents an earlier consent record from hiding **Ask a parent** or changing the advertised starting result. Manually changing any scenario field clears the preset selection and its expected metadata; manual input may still reuse an ID to demonstrate persistent state within the running process.
 
 ### A.3 Child-to-parent interaction flow
 
@@ -419,7 +430,8 @@ sequenceDiagram
     UI->>API: POST /consent-requests
     API->>Decision: Re-check eligibility
     API->>Consent: Create or reuse pending request
-    Consent-->>UI: Pending request
+    Consent-->>UI: Pending request + post-create decision
+    UI-->>Child: Waiting for parent
     Parent->>UI: Approve or decline
     UI->>API: PATCH /consent-requests/:id
     API->>Consent: Update current state
@@ -436,13 +448,13 @@ sequenceDiagram
 | Not evaluated | Scenario inputs, expected demo outcome if selected, and **Check access** |
 | `allowed` | Allowed badge, reason, age, matched rule; no **Ask a parent** |
 | `blocked` | Blocked badge, reason, matched rule or coverage gap; no **Ask a parent** |
-| `parental_consent` | Consent badge, reason, matched rule, and **Ask a parent** |
-| Request `pending` | Parent request plus enabled **Approve** and **Decline** actions |
+| `parental_consent`, no request | Consent badge, reason, matched rule, and **Ask a parent** |
+| Request `pending` | Child shows **Waiting for parent**; active subject's parent request exposes **Approve** and **Decline** |
 | Request `approved` | Fresh `allowed` result; approved state remains visible and may change to declined |
 | Request `declined` | Fresh `blocked` result; declined state remains visible and may change to approved |
 | Loading or error | Disable duplicate in-flight actions; preserve the scenario and show a recoverable error |
 
-Changing inputs invalidates the previous actual result. The selected demo may show **Expected vs Actual**, but the expected value is explanatory metadata only.
+Changing inputs invalidates the previous actual result and clears any selected preset and expected value. A selected preset shows **Expected**, **Actual**, and **Match/Mismatch**, but expected metadata never drives the decision. User-facing explanations accompany stable machine reason codes.
 
 ### A.5 Policy transparency
 
@@ -466,8 +478,11 @@ The page also identifies the policy source and states that demo consent uses in-
 
 - Every demo card shows its expected outcome and purpose; selecting it creates a fresh synthetic subject.
 - The German-child case completes `check → ask → pending → approve → allowed → decline → blocked` without manual data repair.
+- After request creation, the child sees `pending`, cannot create a duplicate action, and the parent panel shows only the active subject's request.
 - A hard-block case never exposes **Ask a parent**, even if consent exists for the same logical scope.
 - The result shows expected versus actual for presets, while the actual result always comes from the server.
+- Manual edits clear stale preset expectations; switching subjects cannot apply one child's parent action to another child's decision.
+- An unknown feature is rejected, while a declared feature without coverage returns `blocked / no_matching_policy`.
 - The policy table renders all JSON rules, shows the lookup path, and highlights the matched rule; missing coverage is distinct.
 - Input changes clear stale results, in-flight actions cannot duplicate writes, and errors preserve the current scenario.
 - Playwright proves the complete consent journey, repeatable preset isolation, hard-block action visibility, and policy-table evidence.
@@ -478,11 +493,14 @@ Every implementation prompt contains: context, bounded scope, constraints, accep
 
 | Milestone | Agent focus | Required evidence before proceeding |
 |---|---|---|
-| Policy core | Loading, calendar age, deterministic specificity | Focused unit tests including duplicate policy and shuffled order |
-| Consent core | One logical record, lifecycle, idempotency, hard-block safety | Service integration tests |
-| REST transport | Validation, stable mapping, server-side eligibility re-check | Route integration tests |
-| UI | Appendix A observable contract: scenario clarity, repeatable journey, parent actions, and policy transparency | Runtime walkthrough plus Appendix A Playwright evidence |
-| Handoff | Reconcile implementation, decisions, README, and AI use | Tests, build, E2E, diff review, and explicit deferred work |
+| M0 | Confirm §1 decisions | Interviewer corrections recorded |
+| M1 | Inspect and plan from §3.2 and §4 | File ownership, dependencies, risk, focused commands |
+| M2 | Implement §2.3 | Decision-core tests plus critic review |
+| M3 | Implement §2.4 | Consent lifecycle tests plus critic review |
+| M4 | Join §2.2–2.4 | Service invariants and post-create pending tests |
+| M5 | Implement §2.5 | Route lifecycle and error-contract tests |
+| M6 | Implement Appendix A | Runtime walkthrough and Playwright evidence |
+| M7 | Verify §3.1 and §3.3 | Multi-angle critic review, non-empty tests, build, E2E, aligned docs, live deployment |
 
 ### B.1 Before changing code
 
@@ -490,19 +508,22 @@ The primary agent must read `AGENTS.md`, this specification, and `DECISIONS.md`;
 
 ### B.2 During implementation
 
-- implement one approved milestone and stop for diff review;
+- cite the milestone and Spec anchor, implement only that approved scope, then stop for review;
 - keep framework concerns outside domain logic and run the narrowest useful verification;
 - keep shared-write or dependency-heavy work sequential;
-- delegate only independent inspection or verification, and wait for real completion reports;
-- for high-risk work, use a read-only spec-first reviewer; convert a valid gap into a failing test before correction;
+- use writer sub-agents only for M2 and M3 after file ownership freezes; delegate other agents only for independent read-only review;
+- finish each high-risk milestone with a spec-first critic; convert a valid adversarial case into a failing test before correction;
 - report changed files, evidence, uncertainty, and required judgment;
 - update `DECISIONS.md` only after an accepted decision changes;
 - update `AI-USE.md` only with material events that actually occurred;
+- do not begin the next milestone until the candidate explicitly continues;
 - never claim that compilation alone proves business correctness.
 
 ### B.3 Before final handoff
 
-Stop feature work, run the broadest verification that fits, and reconcile code, spec, decisions, README, tests, and `AI-USE.md`. Record actual AI mistakes and evidence—or explicitly state that none were observed—remove unused placeholders, never claim an unrun check, and list completed and deferred scope.
+Stop feature work. Run up to three independent read-only critics against the agreed Spec: domain and policy safety; API/UI state and product flow; tests, operations, and delivery. The primary agent deduplicates findings, accepts only evidence-backed gaps, and remains the sole writer.
+
+After corrections, run non-empty tests, production build, and Playwright E2E; reconcile code, spec, decisions, README, and `AI-USE.md`; then create one coherent commit and push it. GitHub Actions must pass CI, trigger the exact commit on Render, and report `live` before deployment is claimed. Record actual AI mistakes and evidence—or explicitly state that none were observed—and list completed and deferred scope.
 
 ### B.4 Kickoff prompt
 
