@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage
+      - run: npm run build
+
+  deploy-render:
+    name: Deploy to Render
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ vars.RENDER_SERVICE_URL }}
+    steps:
+      - name: Validate Render configuration
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ] || [ -z "$RENDER_SERVICE_ID" ]; then
+            echo "Configure RENDER_API_KEY and RENDER_SERVICE_ID in GitHub Actions secrets."
+            exit 1
+          fi
+
+      - name: Trigger deployment for this commit
+        id: deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          response="$(curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            --header "Authorization: Bearer ${RENDER_API_KEY}" \
+            --header "Content-Type: application/json" \
+            --data "$(jq -nc --arg commit "$COMMIT_SHA" \
+              '{clearCache: "do_not_clear", commitId: $commit}')")"
+
+          deploy_id="$(jq -er '.id' <<<"$response")"
+          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+          echo "Triggered Render deployment $deploy_id for $COMMIT_SHA"
+
+      - name: Wait for Render to become live
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          DEPLOY_ID: ${{ steps.deploy.outputs.deploy_id }}
+        run: |
+          for attempt in $(seq 1 90); do
+            response="$(curl --fail-with-body --silent --show-error \
+              --url "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${DEPLOY_ID}" \
+              --header "Authorization: Bearer ${RENDER_API_KEY}")"
+            status="$(jq -er '.status' <<<"$response")"
+            echo "Render deployment status: $status (attempt $attempt/90)"
+
+            case "$status" in
+              live)
+                echo "Render deployment is live."
+                exit 0
+                ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "Render deployment ended with status: $status"
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for Render deployment $DEPLOY_ID."
+          exit 1
