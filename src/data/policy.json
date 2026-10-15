@@ -1,0 +1,14 @@
+{
+  "features": ["chat", "purchases", "profile_photo", "video_upload"],
+  "rules": [
+    { "jurisdiction": "*", "feature": "profile_photo", "min_age": 13, "if_under": "blocked" },
+    { "jurisdiction": "*", "feature": "chat", "min_age": 13, "if_under": "parental_consent" },
+    { "jurisdiction": "US", "feature": "chat", "min_age": 13, "if_under": "parental_consent" },
+    { "jurisdiction": "US-CA", "feature": "chat", "min_age": 16, "if_under": "parental_consent" },
+    { "jurisdiction": "US-TX", "feature": "video_upload", "min_age": 18, "if_under": "blocked" },
+    { "jurisdiction": "GB", "feature": "chat", "min_age": 13, "if_under": "blocked" },
+    { "jurisdiction": "DE", "feature": "chat", "min_age": 16, "if_under": "parental_consent" },
+    { "jurisdiction": "US", "feature": "purchases", "min_age": 18, "if_under": "parental_consent" },
+    { "jurisdiction": "DE", "feature": "purchases", "min_age": 18, "if_under": "blocked" }
+  ]
+}

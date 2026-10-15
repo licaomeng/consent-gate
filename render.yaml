@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: consent-gate
+    runtime: node
+    plan: free
+    branch: master
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    # GitHub Actions owns deployment and reports the final Render status.
+    # Keeping Render auto-deploy enabled would deploy every commit twice.
+    autoDeployTrigger: 'off'
