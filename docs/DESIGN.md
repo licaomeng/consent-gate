@@ -393,7 +393,7 @@ Approve and decline are not optimistic updates. Consent is enforcement state, so
 
 ## 5. Verification
 
-Each risk is tested at the narrowest useful layer.
+Each risk is tested at the narrowest useful layer. Tests pin the evaluation date in-process; the request contract exposes no evaluation-date seam.
 
 > **Testing principle:** prove business rules close to the domain, prove boundaries once, and reserve browser tests for journeys whose wiring matters.
 

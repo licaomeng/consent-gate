@@ -26,9 +26,9 @@ A local verification also failed because a stale `.next` cache referenced routes
 
 One row per milestone, added when the milestone closes, as required by the per-milestone review protocol in `AGENTS.md`. Keep entries factual and short.
 
-| Milestone | AI output | Adversarial review angle | Findings fixed | Tests added or strengthened |
-|---|---|---|---|---|
-| | | | | |
+| Milestone | AI output | Adversarial review angle | Findings fixed | Rejected or discarded | Tests added or strengthened |
+|---|---|---|---|---|---|
+| | | | | | |
 
 ## Current verification
 

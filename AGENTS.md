@@ -43,6 +43,15 @@ A sub-agent report is a claim, not evidence. The primary agent verifies any clai
 
 Long-running commands, agent runs, and large reads run in the background so the conversation stays responsive. State the plan first, then process results when they arrive. Large outputs are written to a results file and referenced by path plus a one-line summary.
 
+## Milestones
+
+Work proceeds one milestone at a time, and each milestone ends in human review:
+
+1. **M1 Domain core** — shared types, policy validation and precedence, calendar age, input normalization, decision evaluation, consent state machine, and their unit tests.
+2. **M2 Services and HTTP** — repository, decision and consent services, the four versioned routes, and API tests.
+3. **M3 Page and E2E** — demonstration page, presets, action matrix, demo contract tests, and the Playwright journey.
+4. **M4 Verification and handoff** — remove empty-suite allowances, run the full verification ladder, reconcile documentation with delivered behavior, and verify the deployed revision.
+
 ## Review protocol
 
 A read-only reviewer must:
@@ -57,7 +66,7 @@ For each accepted defect, the primary agent reproduces it with a failing test, m
 
 Every milestone ends with the same four obligations, recorded as one row in the review log in `AI-USE.md`:
 
-1. **Tests for the rules the milestone introduced**, including edge cases rather than only the happy path. For this project those include age boundaries (the day before, on, and after a birthday, plus February 29), rule precedence with shuffled input, jurisdiction normalization, hard-block protection, and consent-scope isolation.
+1. **Tests for the rules the milestone introduced**, including edge cases rather than only the happy path. For this project those include age boundaries (the day before, on, and after a birthday, plus February 29), rule precedence with shuffled input, jurisdiction normalization, rejection of a client-supplied evaluation date, hard-block protection, and consent-scope isolation.
 2. **A read-only adversarial reviewer agent**, run after the focused tests pass. Give it an angle that differs from the previous round, for example: derive expected age behavior from the brief, attack the API contract, or hunt for unhandled failure paths. It must derive expected behavior before reading the implementation and report evidence-backed gaps only.
 3. **A failing test first for every accepted defect**, then the smallest correction, then the relevant regression run.
 4. **A mutation check for each new safety rule**: deliberately break the branch that enforces it and confirm at least one test fails. A rule whose removal turns nothing red is documentation, not a guard.
