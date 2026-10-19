@@ -1,6 +1,6 @@
 # AI Use
 
-Consent Gate decides access from age, jurisdiction, and parental consent. I used OpenAI Codex to analyze the brief, challenge design assumptions, and audit documentation. Claude Code implemented M1–M5; M1–M4 each had a read-only adversarial reviewer. I chose the product semantics, checked every diff and verification run, rejected unsupported claims, and own the submission. I did not delegate the consent scope, the policy semantics, or the final verification decision.
+Consent Gate decides access from age, jurisdiction, and parental consent. I used OpenAI Codex for document-heavy analysis (brief, design assumptions, documentation), where its session UI suited how I work; Claude Code implemented M1–M5 and ran a read-only reviewer for M1–M4. The split was a workflow choice, not a capability claim. I chose the product semantics, checked every diff and verification run, rejected unsupported claims, and own the submission. I did not delegate the consent scope, the policy semantics, or the final verification decision.
 
 The full log records every finding; this page keeps the seven most consequential.
 
