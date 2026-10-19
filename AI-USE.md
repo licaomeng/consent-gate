@@ -26,14 +26,23 @@ A local verification also failed because a stale `.next` cache referenced routes
 
 One row per milestone, added when the milestone closes, as required by the per-milestone review protocol in `AGENTS.md`. Keep entries factual and short.
 
-| Milestone | AI output | Adversarial review angle | Findings fixed | Rejected or discarded | Tests added or strengthened |
-|---|---|---|---|---|---|
-| M1 Domain core | Types, policy loader and precedence, calendar age, scenario validation, decision evaluator, and consent state machine; 67 unit tests across 5 files. | First pass: derived age, precedence, fail-closed, and consent expectations from the brief before reading the implementation. Second pass: attacked the boundary between parsing and evaluation. | First pass found no true defects; added missing coverage (subdivision → country fallback, unknown-country wildcard, consent adjacency, decision-level February 29). Second pass found: `resolveRule` trusted pre-normalized input, so a raw lowercase `gb` could skip the GB hard block; the frozen-policy/matchedRule reference could be mutated; dates before 1900 were accepted. Fixed all three. | Suggested moving future-DOB validation into `parseScenario`; rejected because it needs the evaluation date and `calculateAge` already enforces it on every path. The second reviewer could not reproduce the build/mutation claims because its sandbox denied writes; that was treated as an environment limitation, not evidence against the recorded results. | 52 → 67 tests. Mutation checks: removed the hard-block guard, removed jurisdiction uppercasing, relaxed the strict request shape, and removed normalization inside `resolveRule` — all four turned tests red. |
+| Milestone | Commit | AI output | Adversarial review angle | Findings fixed | Rejected or discarded | Tests added or strengthened |
+|---|---|---|---|---|---|---|
+| M1 Domain core | [`4c504ec`](https://github.com/licaomeng/consent-gate/commit/4c504ec), [`9d137a1`](https://github.com/licaomeng/consent-gate/commit/9d137a1) | Types, policy loader and precedence, calendar age, scenario validation, decision evaluator, and consent state machine; 67 unit tests across 5 files. | First pass: derived age, precedence, fail-closed, and consent expectations from the brief before reading the implementation. Second pass: attacked the boundary between parsing and evaluation. | First pass: no true defects; added missing coverage. Second pass: three boundary defects and one documentation gap. Details below. | Suggested moving future-DOB validation into `parseScenario`; rejected because it needs the evaluation date and `calculateAge` already enforces it on every path. The second reviewer could not reproduce the build/mutation claims because its sandbox denied writes; that was treated as an environment limitation, not evidence against the recorded results. | 52 → 67 tests. Mutation checks: removed the hard-block guard, removed jurisdiction uppercasing, relaxed the strict request shape, and removed normalization inside `resolveRule` — all four turned tests red. |
+
+### M1 review corrections
+
+Initial M1 implementation: [`4c504ec`](https://github.com/licaomeng/consent-gate/commit/4c504ec). Review hardening: [`9d137a1`](https://github.com/licaomeng/consent-gate/commit/9d137a1).
+
+1. **Jurisdiction normalization depended on the caller.** `evaluateDecision` / `resolveRule` matched the raw string, so a caller that skipped `parseScenario` could pass `gb`; it fell through to the `*` consent rule while the `GB` hard block sat unused. Fix: `resolveRule` now normalizes and validates at its own boundary. Tests: raw `gb` + an approved consent → `blocked / under_minimum_age`; `g!` → `validation_error`.
+2. **The shared policy was mutable and `matchedRule` leaked the internal rule object.** `readonly` is compile-time only; once the policy becomes a module singleton, a downstream mutation of a result could change later decisions. Fix: freeze the policy, the rule array, and every rule, and return a copy of `matchedRule`. Tests: mutating a frozen rule throws; mutating a result leaves the policy unchanged.
+3. **Implausible birth dates satisfied every age threshold.** `0000-01-01` and `1800-01-01` were accepted. Fix: reject calendar dates before 1900 and record that choice in `DECISIONS.md`. Tests: `0000-01-01`, `1800-01-01`, and `1899-12-31` are rejected both directly and through `parseScenario`.
+4. **`AI-USE.md` said the implementation tool would be recorded later.** Fix: name Claude Code as the implementation tool, add this review log, and state the verification results.
 
 ## Current verification
 
 ```text
-Product implementation: M1 domain core complete; services, HTTP routes, and UI not started
+Product implementation: M1 domain core complete ([`4c504ec`](https://github.com/licaomeng/consent-gate/commit/4c504ec), hardened in [`9d137a1`](https://github.com/licaomeng/consent-gate/commit/9d137a1)); services, HTTP routes, and UI not started
 Vitest: 67 tests passing across 5 domain test files
 Next.js production build: passed (Next.js 16.4.0, TypeScript check included)
 Playwright: no product tests yet; starter empty-suite allowance active
