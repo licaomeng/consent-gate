@@ -1,17 +1,32 @@
 # Consent Gate
 
-Live-coding starter for a policy decision service and parental-consent workflow.
+A policy-driven access decision service with a parental-consent workflow.
 
-## Start here
+Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-- [`docs/EXERCISE_BRIEF.md`](docs/EXERCISE_BRIEF.md) — supplied exercise.
-- [`INTERVIEW_SPEC.md`](INTERVIEW_SPEC.md) — proposed contract to confirm before coding.
-- [`DECISIONS.md`](DECISIONS.md) — accepted choices and deferred work.
-- [`AI-USE.md`](AI-USE.md) — factual AI-assistance log for this session.
+> **Current state:** the repository contains the reviewed design and development scaffolding. Product code and product tests have not started. Replace this notice with verified capabilities before submission.
 
-## Local development
+## At a glance
 
-Requirements: Node.js 20.9 or later and npm.
+- **Core path:** evaluate access → raise a request → parent acts → evaluate again.
+- **Safety boundary:** consent may satisfy a consent-eligible rule, but it never overrides a hard block.
+- **Source of truth:** the server validates and evaluates the supplied JSON policy; the browser displays the result and its evidence.
+- **Exercise cut line:** one Next.js deployment and an in-memory repository. Durable identity, storage, audit, and concurrency are documented but not claimed.
+
+## Review path
+
+Start with [`DECISIONS.md`](DECISIONS.md), as requested in the exercise. It records the interpretations and trade-offs that affect behavior.
+
+Then use:
+
+- [`docs/DESIGN.md`](docs/DESIGN.md) for architecture, API, UI, and verification contracts;
+- [`AI-USE.md`](AI-USE.md) for the factual AI contribution and correction log;
+- [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md) only for deferred production concerns;
+- [`docs/EXERCISE_BRIEF.md`](docs/EXERCISE_BRIEF.md) for the original prompt.
+
+## Run locally
+
+Requires Node.js 20.9 or later.
 
 ```bash
 npm ci
@@ -20,7 +35,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Verification
+## Verify
 
 ```bash
 npm run test:run
@@ -29,39 +44,27 @@ npm run test:e2e
 npm run verify
 ```
 
-The repository begins without product tests. The test commands tolerate that empty starting state so the framework can be checked before business implementation. Add focused tests with each milestone; once product E2E tests exist, `npm run verify` becomes the final comprehensive gate.
+The starter temporarily permits empty suites. Before submission, those allowances must be removed and `npm run verify` must run non-empty Vitest suites, a production build, and Playwright E2E tests.
 
 ## Deployment
 
-GitHub Actions validates pushes and pull requests. On pushes to `master`, the
-workflow then deploys the verified commit through the Render API and waits until
-Render reports it as `live`. `render.yaml` defines the Render service:
+GitHub Actions verifies a pushed revision before asking Render to deploy that commit. Render uses `/` as its service health check. Auto-deploy is disabled so the same push is not deployed twice.
 
-```text
-push -> GitHub Actions verify -> Render API deploy -> wait for live -> production
-```
+Required GitHub configuration:
 
-Before enabling the deployment job, configure these repository settings:
+- secrets: `RENDER_API_KEY`, `RENDER_SERVICE_ID`;
+- variable: `RENDER_SERVICE_URL`;
+- environment: `production`.
 
-- Actions secrets: `RENDER_API_KEY` and `RENDER_SERVICE_ID`
-- Actions variable: `RENDER_SERVICE_URL` (for example,
-  `https://consent-gate.onrender.com`)
-- GitHub environment: `production` (created automatically on the first run if
-  it does not already exist)
+In-memory consent resets after restart, redeployment, or service sleep.
 
-Render auto-deploy is disabled in `render.yaml` because GitHub Actions owns the
-deployment. Do not push this workflow until the two required secrets are set.
+**Live application:** add after the deployed revision has been verified.
 
-The planned exercise storage is in memory. State therefore resets after process restart, redeployment, or service sleep.
+## Submission check
 
-> Add the public URL only after the Render service has been created and verified.
-
-## Current status
-
-- Confirmed scope: pending interviewer review
-- Implemented business milestones: none
-- Implemented business logic, API, consent workflow, and product tests: none
-- Starter verification: dependency installation and production build pass locally
-- Deferred work: pending scope alignment
-
-Do not claim a feature or test is complete until it has been implemented and verified.
+- [ ] The complete child-to-parent journey works.
+- [ ] Empty-suite allowances are removed and `npm run verify` passes.
+- [ ] README capabilities match the delivered code.
+- [ ] The reviewed commit is the deployed commit.
+- [ ] `DECISIONS.md` and `AI-USE.md` contain final, factual information.
+- [ ] Known limitations and unfinished work are explicit.

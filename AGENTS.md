@@ -1,25 +1,48 @@
-# Coding Agent Instructions
+# Agent Collaboration Rules
 
-## Source of truth
+## Primary-agent ownership
 
-Read these files before changing code:
+The primary agent owns task planning, shared contracts, integration decisions, documentation consistency, and final verification. It is the only writer at dependency join points.
 
-1. `docs/EXERCISE_BRIEF.md` — immutable supplied requirements.
-2. `INTERVIEW_SPEC.md` — proposed working contract; interviewer-confirmed changes take priority.
-3. `DECISIONS.md` — accepted assumptions, pending choices, and deferred work.
+Before changing code, read:
+
+1. `docs/EXERCISE_BRIEF.md`: supplied requirements; do not edit them.
+2. `DECISIONS.md`: selected interpretations and trade-offs.
+3. `docs/DESIGN.md`: intended architecture, behavior, and evidence.
+4. `CLAUDE.md`: project-level engineering constraints.
+
+## Delegation boundary
+
+Delegate only work that is independent, has a clear scope, relies on stable contracts, and can be reviewed before integration.
+
+Good uses of independent agents include:
+
+- deriving adversarial cases from the brief and invariants;
+- reviewing policy specificity, age boundaries, or consent safety;
+- checking an API contract against the service behavior;
+- checking documentation against the verified implementation.
+
+Do not use parallel writers for shared domain contracts, service composition, dependent API/UI work, or final integration fixes. When parallel writing is justified, assign disjoint files and rejoin through the primary agent.
+
+## Review protocol
+
+A read-only reviewer must:
+
+1. derive expected behavior from the brief, decisions, and design before reading the implementation;
+2. report evidence-backed gaps rather than stylistic preferences;
+3. avoid modifying files unless explicitly reassigned as a writer.
+
+For each accepted defect, the primary agent reproduces it with a failing test, makes the smallest correction, and reruns the relevant regression tests. Sub-agent output is advisory until the primary agent and human owner review it.
 
 ## Working protocol
 
-- Inspect first and propose the smallest verifiable milestone before editing.
-- Work on one approved milestone at a time; do not expand scope without asking.
-- Keep policy and age logic framework-independent.
-- Keep rules in `src/data/policy.json`; do not duplicate them in routes or UI.
-- Keep access evaluation side-effect free. Consent creation is a separate action.
-- Consent must never override a hard policy block.
-- After each material change, run focused tests, summarize the diff and uncertainty, then stop for candidate review.
-- Derive tests from the specification and policy, not only from generated implementation.
-- Update `DECISIONS.md` only after a decision is accepted.
-- Update `AI-USE.md` only with events that actually occurred.
+- Group work into reviewable changes and do not silently expand the scope.
+- Derive tests from requirements and invariants, not only from generated code.
+- After each material change, run focused verification and inspect the diff.
+- Keep commit boundaries aligned with meaningful capabilities or corrections.
+- Update `DECISIONS.md` when a selected design changes, including the reason.
+- Update `AI-USE.md` only with material events that actually occurred.
+- Keep commit hashes, verification results, and deployed-revision claims factual.
 
 ## Commands
 
@@ -34,13 +57,13 @@ npm run verify
 
 ## Deployment contract
 
-- `.github/workflows/ci.yml` is the CI source of truth.
-- `render.yaml` is the Render deployment source of truth.
+- `.github/workflows/ci.yml` controls CI.
+- `render.yaml` defines the Render service.
 - Render builds with `npm ci && npm run build`, starts with `npm start`, and deploys after checks pass.
-- Storage is intentionally in memory unless an interviewer-approved decision changes it. State resets after restart, redeployment, or service sleep.
-- Do not add PostgreSQL, secrets, services, dependencies, or deployment changes unless the agreed milestone requires them.
+- Storage is in memory for this exercise. State resets after restart, redeployment, or service sleep.
+- Do not add unplanned infrastructure, services, or dependencies without recording the design change first.
 
-The candidate owns the result. Compilation is not proof of business correctness; a milestone is complete only after diff review and focused verification.
+The human author owns the result. Compilation is not proof of business correctness; a milestone is complete only after diff review and focused verification.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -1,104 +1,77 @@
 # Decisions
 
-This file starts with proposed exercise decisions. During M0, confirm or revise them with the interviewer before implementation. A proposal is not interviewer-approved until its status changes.
+The brief leaves several behaviors open. This file records the choices that materially affect the implementation. Detailed contracts live in [`docs/DESIGN.md`](docs/DESIGN.md); production extensions live in [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md).
 
-## Status guide
+These are proposed implementation decisions. The README records what has actually been delivered and verified.
 
-- **Proposed** — prepared before the interview; awaiting confirmation.
-- **Confirmed** — explicitly accepted during the interview.
-- **Revised** — changed after interviewer feedback; record the final choice.
-- **Deferred** — intentionally outside the exercise scope.
+## At a glance
 
-## Proposed baseline
+| Decision | Why | Accepted cost |
+|---|---|---|
+| Scope consent by subject, jurisdiction, and feature | Prevent consent from leaking between children or use cases | The demo needs a synthetic `subjectId` |
+| Exact subdivision → country → `*` | Deterministic specificity matches the supplied policy | Real jurisdiction hierarchies need explicit production data |
+| Keep access checks read-only | Refreshes and retries must not create requests | The product needs an explicit **Ask a parent** action |
+| Treat hard blocks as non-overridable | Consent is valid only where policy permits it | An old approval may be ignored by a stricter current rule |
+| Fail closed on missing coverage | A configuration gap must not grant access | The UI must distinguish a gap from an explicit prohibition |
+| Store one reversible current state | Supports approve, decline, and change-of-mind behavior simply | No immutable audit history in the exercise |
+| Use an in-memory repository behind an interface | Keeps the take-home focused on policy and workflow semantics | State is neither durable nor cross-instance |
+| Keep policy evaluation on the server | Prevents browser and server rules from drifting | The server must return enough evidence for a transparent UI |
 
-### D1 — Subject identity
+## Identity and consent scope
 
-- **Status:** Proposed
-- **Decision:** Use a stable `subjectId`; date of birth is an attribute, not identity.
-- **Why:** Two users may share a birthday, while consent belongs to one subject.
-- **Impact:** Decision and consent operations carry `subjectId`.
+Consent is keyed by `subjectId + jurisdiction + feature`. DOB is an attribute, not an identifier: two children may share a birthday, and one child may have different consent outcomes for different features or jurisdictions.
 
-### D2 — Rule precedence
+The demo accepts a synthetic `subjectId` because accounts and authentication are outside the brief. A real product would derive the subject and guardian relationship from authenticated profiles. Production scope may also include product, purpose, policy version, and expiry.
 
-- **Status:** Proposed
-- **Decision:** Exact region → country → global wildcard, independent of JSON order.
-- **Why:** The most specific applicable rule should win deterministically.
-- **Impact:** Test overlapping rules after changing their file order.
+## Rule resolution
 
-### D3 — Consent scope and lifecycle
+The evaluator checks an exact subdivision, then its country, then the global `*` rule. File order never determines the winner. Combining several matching rules would require conflict semantics that the brief does not provide.
 
-- **Status:** Proposed
-- **Decision:** One current record per `subjectId + jurisdiction + feature`; support `pending`, `approved`, `declined`, and reversal.
-- **Why:** The latest parent choice should affect later checks without duplicate logical requests.
-- **Impact:** Creation and repeated updates are idempotent; audit history is deferred.
+This hierarchy fits the supplied `US-CA` and `US-TX` data. A production policy should model jurisdiction inheritance explicitly rather than assuming every location can be derived by splitting a string.
 
-### D4 — Read and write boundary
+## Consent lifecycle
 
-- **Status:** Proposed
-- **Decision:** **Check access** is read-only; only **Ask a parent** creates or reuses a request.
-- **Why:** Evaluation should be safe to retry and must not create state on refresh.
-- **Impact:** Decision and request creation remain separate API operations.
+One mutable record represents the current state for a consent scope. It begins as `pending`, may become `approved` or `declined`, and may move between those resolved states when a parent changes their mind.
 
-### D5 — Consent safety boundary
+Creating the same scope returns the existing record before new-request eligibility is evaluated. This preserves idempotent retries even when that record is already approved or declined. Repeating its current target state is also safe. These business rules do not solve simultaneous opposing writes across processes; production would add a unique scope constraint, a version check such as `If-Match`, and immutable audit events.
 
-- **Status:** Proposed
-- **Decision:** Consent affects only a rule whose under-age action is `parental_consent`; it never overrides a hard block.
-- **Why:** Parent approval cannot weaken an explicit policy prohibition.
-- **Impact:** Re-check eligibility and test stale approval against hard-block rules.
+## Read and write boundary
 
-### D6 — Unknown feature and missing coverage
+**Check access** is read-only. **Ask a parent** is the explicit operation that creates or reuses a request. Decision checks may run during refresh, retry, prefetch, or background work; allowing them to create state could generate unintended requests or notifications.
 
-- **Status:** Proposed
-- **Decision:** Reject a feature absent from `policy.features`; for a declared feature with no applicable rule, return `blocked / no_matching_policy`.
-- **Why:** Invalid input and a real policy gap are different conditions.
-- **Impact:** Keep transport errors separate from fail-closed decision reasons.
+The server re-evaluates the scenario before creating a request. A client cannot claim that consent is available for an already allowed feature or for a hard block.
 
-### D7 — Exercise persistence
+## Hard blocks and missing coverage
 
-- **Status:** Proposed
-- **Decision:** Use an in-memory repository behind an interface.
-- **Why:** It supports the complete stateful journey within the time box.
-- **Impact:** State resets on restart; PostgreSQL, concurrency, and audit events are deferred.
+Consent affects only a winning rule whose under-age action is `parental_consent`. It never overrides `blocked`, including when an older approval exists.
 
-### D8 — API and UI boundary
+An undeclared feature is invalid input. A declared feature with no applicable rule is a policy coverage gap, so the exercise fails closed as `blocked / no_matching_policy`. The distinct reason allows monitoring and a neutral user message instead of presenting the gap as an explicit legal prohibition.
 
-- **Status:** Proposed
-- **Decision:** Use four thin REST operations and one transparent page; the server owns policy decisions and explanations.
-- **Why:** The exercise has a small set of explicit actions and should remain easy to inspect.
-- **Impact:** The browser displays evidence but does not implement another rule matcher.
+## Dates and input normalization
 
-### D9 — Demo isolation
+DOB is parsed as a real `YYYY-MM-DD` calendar date; invalid and future dates are rejected. One injected evaluation date is used for the entire request and returned as `evaluatedAt`, so the reported age can be reproduced. A February 29 birthday advances on March 1 in a non-leap year unless a jurisdiction-specific rule says otherwise. Operational timestamps use UTC ISO 8601.
 
-- **Status:** Proposed
-- **Decision:** Each preset creates a fresh subject; manual input clears preset expectations; the parent panel shows only the active subject.
-- **Why:** Earlier consent must not contaminate another walkthrough or leave stale expected results.
-- **Impact:** Expected metadata never drives the actual server decision.
+Jurisdictions are trimmed and uppercased before matching. Feature identifiers must exactly match `policy.features`; silently correcting an unknown feature could hide a client defect.
 
-### D10 — Delivery and verification
+## Storage
 
-- **Status:** Proposed
-- **Decision:** Unit and integration tests, production build, and Playwright E2E gate delivery; empty test suites do not pass.
-- **Why:** Domain correctness alone does not prove the child-to-parent journey.
-- **Impact:** README, this file, and `AI-USE.md` must match the verified implementation.
+The exercise selects an in-memory repository behind an interface. This supports the required stateful workflow without adding migrations and database operations to a small take-home. The trade-off is explicit: state resets after restart or redeployment, and there is no cross-instance consistency guarantee.
 
-## Interview changes
+PostgreSQL is the production direction because consent requires uniqueness, transactions, conditional updates, and auditable history. Browser storage would put authoritative consent in the wrong trust boundary.
 
-Record only changes made during the session:
+## API and UI
 
-- _None yet._
+REST keeps the small command-oriented workflow explicit. `POST /decisions` carries structured input without placing DOB in a URL. GraphQL would add schema and resolver machinery without solving a query-shape problem in this exercise.
 
-## Deferred production concerns
+Policy decisions remain on the server. The page will receive a display-safe policy model plus the server's `lookupPath` and `matchedRule`; it will not reconstruct precedence. Demo presets will generate fresh subjects so prior consent cannot change the advertised starting result.
 
-- Guardian authentication and guardian-subject authorization.
-- Durable storage, uniqueness, concurrency control, and audit history.
-- Policy versioning, rollout, expiry, and re-consent.
-- Notifications, rate limits, observability, and multi-region operation.
+## Verification
 
-## M0 completion gate
+Policy and age rules will be tested as pure units, consent behavior through services and the real in-memory repository, HTTP mapping at route boundaries, and a few critical journeys in Playwright. Each demo preset will also be evaluated against the real engine so presentation metadata cannot drift from behavior.
 
-Before M1 begins:
+## Open production questions
 
-- mark each implementation-critical decision **Confirmed** or **Revised**;
-- record unresolved choices and their safe working assumptions;
-- update `INTERVIEW_SPEC.md` if an accepted change affects the shared contract;
-- do not let an agent infer an unresolved product decision from existing code.
+- When does consent expire, and which policy changes require re-consent?
+- Can consent cross jurisdictions, products, purposes, or guardian relationships?
+- Should a coverage gap use a fourth production outcome rather than exercise-compatible `blocked`?
+- How should multiple guardians' conflicting decisions be resolved?

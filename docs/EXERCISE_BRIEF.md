@@ -1,38 +1,73 @@
-# Consent Gate — Original Exercise Brief
+# Take-home: Consent Gate
 
-This is a normalized copy of the supplied live-coding exercise. Requirements and policy data are unchanged.
+Thanks for getting this far. We'd rather see how you build than talk about it, so here's something small to build.
 
-## Timebox
+Give it about an hour. There's more here than fits in an hour, which is fine. Just tell us what you didn't get to.
 
-Give the exercise about one hour. The scope is intentionally larger than the time available. Explain assumptions, unfinished work, and what would be done next.
+## The problem
+
+If your product has users under 18, you have to work out what each one is allowed to do before they do it. It depends on how old they are, where they live, and whether a parent has said yes.
+
+You're going to build a small version of that.
 
 ## What to build
 
-Build a decision service that accepts date of birth, jurisdiction, and feature and returns `allowed`, `blocked`, or `parental_consent`. When consent is needed, raise a request and allow a parent to approve, decline, and later change the decision.
+**A decision service.** Takes a date of birth, a jurisdiction and a feature. Returns one of three answers: allowed, blocked, or needs parental consent. Where consent is needed, you can raise a request and a parent can act on it.
 
-Build one page to enter inputs, see the result, raise a consent request, and act on it as the parent.
+**A page to use it.** One page is plenty. Enter the inputs, see the answer, and act on a pending request as the parent.
 
-Use any familiar stack. The k-ID stack includes Go, TypeScript, React, Next.js, and Postgres. In-memory storage is acceptable.
+Use whatever stack you like. We write Go, TypeScript, React and Next.js against Postgres, so that's easiest for us to read, but don't go learning something new for this. In-memory storage is fine if you'd rather spend the time elsewhere.
 
-## Supplied policy
+## The rules
 
-The application must read rules from `src/data/policy.json` rather than bake them into code.
+Your service should read these rather than have them baked in:
 
-## Supplied examples
+```json
+{
+  "features": ["chat", "purchases", "profile_photo", "video_upload"],
+  "rules": [
+    { "jurisdiction": "*",     "feature": "profile_photo", "min_age": 13, "if_under": "blocked" },
+    { "jurisdiction": "*",     "feature": "chat",          "min_age": 13, "if_under": "parental_consent" },
+    { "jurisdiction": "US",    "feature": "chat",          "min_age": 13, "if_under": "parental_consent" },
+    { "jurisdiction": "US-CA", "feature": "chat",          "min_age": 16, "if_under": "parental_consent" },
+    { "jurisdiction": "US-TX", "feature": "video_upload",  "min_age": 18, "if_under": "blocked" },
+    { "jurisdiction": "GB",    "feature": "chat",          "min_age": 13, "if_under": "blocked" },
+    { "jurisdiction": "DE",    "feature": "chat",          "min_age": 16, "if_under": "parental_consent" },
+    { "jurisdiction": "US",    "feature": "purchases",     "min_age": 18, "if_under": "parental_consent" },
+    { "jurisdiction": "DE",    "feature": "purchases",     "min_age": 18, "if_under": "blocked" }
+  ]
+}
+```
 
-- Born `2015-03-01`, in `DE`, requesting `chat` → `parental_consent`.
-- Born `1990-06-15`, in `US`, requesting `purchases` → `allowed`.
+Two examples so we're talking about the same thing:
 
-Where the brief or rules do not cover a case, make a decision and document it.
+- Born 2015-03-01, in `DE`, asking for `chat`: needs parental consent.
+- Born 1990-06-15, in `US`, asking for `purchases`: allowed.
 
-## Expected deliverables
+This is about as tidy as rules get in real life. Where they don't cover something, make a call and write down what you picked.
 
-1. Decision endpoint.
-2. Consent requests a parent can approve, decline, and later change.
-3. Correct and stable answers.
-4. A few high-value tests.
-5. `DECISIONS.md` for assumptions, choices, reasons, and skipped work.
-6. A short `AI-USE.md`.
-7. Run instructions in `README.md`.
+## What we need back
 
-AI tools are allowed. Record what was used, where it was wrong, and what was discarded. The candidate must understand and defend the submitted code.
+1. The decision endpoint.
+2. Consent requests a parent can approve or decline, and change their mind on afterwards.
+3. Answers that are right, and stay right.
+4. A couple of tests. The ones you'd want if someone else was about to change this code.
+5. A `DECISIONS.md`. Anything the rules or this brief left open, what you picked and why, plus whatever you skipped for time. Bullets are fine. We read this one first.
+6. An `AI-USE.md`, see below. Keep it short.
+7. How to run it, in the README.
+
+## Using AI
+
+Use whatever you normally use. We do, constantly.
+
+Two asks.
+
+Put what you used in `AI-USE.md`, including where it got things wrong and what you threw away. Something like "generated the rule matcher, it just took the first match, which was wrong, so I rewrote it" is the sort of thing we want.
+
+And own what you send us. If you wouldn't defend a line of it, don't send it.
+
+## Sending it back
+
+A repo, link or zip, with whatever's needed to run it. No credentials.
+
+We read these ourselves, and we won't be walking through it with you, so let the `DECISIONS.md` do the talking.
