@@ -28,16 +28,16 @@ One row per milestone, added when the milestone closes, as required by the per-m
 
 | Milestone | AI output | Adversarial review angle | Findings fixed | Rejected or discarded | Tests added or strengthened |
 |---|---|---|---|---|---|
-| | | | | | |
+| M1 Domain core | Types, policy loader and precedence, calendar age, scenario validation, decision evaluator, and consent state machine; 61 unit tests across 5 files. | Derived age, precedence, fail-closed, and consent expectations from the brief before reading the implementation. | No true defects. Added missing coverage: subdivision → country fallback (`US-NY`), unknown-country wildcard match (`FR`), consent adjacency (minimum age met with a declined consent, hard block under every state, `no_matching_policy` with approval), and a decision-level February 29 transition. | Suggested moving future-DOB validation into `parseScenario`; rejected because it needs the evaluation date and `calculateAge` already enforces it on every path. | 52 → 61 tests. Mutation checks: removed the hard-block guard, removed jurisdiction uppercasing, relaxed the strict request shape — all three turned tests red. |
 
 ## Current verification
 
 ```text
-Product implementation: not started
-Vitest: no product tests yet; starter empty-suite allowance active
-Next.js production build: passed from a clean cache
+Product implementation: M1 domain core complete; services, HTTP routes, and UI not started
+Vitest: 61 tests passing across 5 domain test files
+Next.js production build: passed (Next.js 16.4.0, TypeScript check included)
 Playwright: no product tests yet; starter empty-suite allowance active
-npm run verify: passed for scaffolding only
+npm run verify: not yet run for a product increment (the E2E suite is still empty)
 Public URL: not yet verified
 ```
 
