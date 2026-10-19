@@ -1,29 +1,46 @@
 # Consent Gate
 
+**Live demo:** [consent-gate.onrender.com](https://consent-gate.onrender.com/)
+
 A policy-driven access decision service with a parental-consent workflow.
 
-Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
+Given a subject id, date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. The demo generates the subject id; a production product would derive it from an authenticated profile. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** the planned implementation milestones are delivered (the domain core, the services and `/api/v1` routes, the single-page consent workflow, and verification), followed by one user-review round (M5) for UX and accessibility, including a follow-up pass that hardened ids, live regions, tooltips, and timestamps. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys; coverage is reported by `npm run test:coverage`. The repository is the deliverable; an optional public deployment is pending.
+> **Current state:** all milestones are delivered. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys.
 
 ## At a glance
 
 - **Core path:** evaluate access → raise a request → parent acts → evaluate again.
 - **Safety boundary:** consent may satisfy a consent-eligible rule, but it never overrides a hard block.
-- **Source of truth:** the server validates and evaluates the supplied JSON policy; the browser displays the result and its evidence.
-- **Page guidance:** each demo case shows its expected outcome before selection; decisions use a four-layer card (outcome, status, evidence, demo check) with colour paired with text, and a concise live-region summary.
-- **Exercise cut line:** one Next.js deployment and an in-memory repository. Durable identity, storage, audit, and concurrency are documented but not claimed.
+- **Source of truth:** the server validates and evaluates the exercise policy in `src/data/policy.json`; the browser displays the result and its evidence.
+- **Scope:** one Next.js app and an in-memory store. Durable identity, storage, audit, and concurrency are documented, not claimed.
 
 ## Review path
 
 Start with [`DECISIONS.md`](DECISIONS.md), as requested in the exercise. It records the interpretations and trade-offs that affect behavior.
 
-Then use:
+Then read [`docs/DESIGN.md`](docs/DESIGN.md) for the contracts. The map below covers the rest.
 
-- [`docs/DESIGN.md`](docs/DESIGN.md) for architecture, API, UI, and verification contracts;
-- [`AI-USE.md`](AI-USE.md) for the factual AI contribution and correction log;
-- [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md) only for deferred production concerns;
-- [`docs/EXERCISE_BRIEF.md`](docs/EXERCISE_BRIEF.md) for the original prompt.
+## Repository map
+
+| Path | Contents |
+|---|---|
+| `src/domain/` | Pure policy, age, decision, and consent rules; no framework or I/O |
+| `src/services/` | Decision and consent orchestration over the repository contract |
+| `src/repository/` | In-memory consent store behind an interface |
+| `src/app/` | Next.js page, layout, and the `/api/v1` route handlers |
+| `src/components/` | Client UI: page controller, decision card, and help tooltip |
+| `src/data/policy.json` | The rule set from the brief; validated at startup |
+| `tests/` | Vitest unit, service, API, and application tests |
+| `e2e/` | Playwright journeys against a production build |
+| `tools/` | Reproducible HTTP smoke and mutation checks |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture, API, UI, accessibility, and test contracts |
+| [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md) | Deferred production design: storage, concurrency, trust boundary |
+| [`docs/EXERCISE_BRIEF.md`](docs/EXERCISE_BRIEF.md) | The original prompt, preserved unchanged |
+| [`AGENTS.md`](AGENTS.md) | Agent collaboration contract: milestones, delegation, review protocol |
+| [`CLAUDE.md`](CLAUDE.md) | Claude-specific project constraints and workflow |
+| [`AI-USE.md`](AI-USE.md) | What AI produced, where it was wrong, and what was discarded |
+| [`DECISIONS.md`](DECISIONS.md) | Open choices, rationale, trade-offs, and skipped work |
 
 ## Run locally
 
@@ -41,11 +58,12 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 npm run test:run       # 172 Vitest tests
 npm run build          # production build of the page and the three /api/v1 route files (four operations)
+npx playwright install chromium   # once, before the browser journeys
 npm run test:e2e       # 19 Playwright journeys (run npm run build first)
 npm run verify         # coverage -> build -> E2E, the same stages CI runs
 ```
 
-No suite may pass vacuously: the starter's empty-suite allowances were removed in the final pass, so a missing or empty suite fails the command.
+A missing or empty suite fails the command; there are no empty-suite allowances.
 
 ### Developer checks
 
@@ -68,24 +86,10 @@ Required GitHub configuration:
 - variable: `RENDER_SERVICE_URL`;
 - environment: `production`.
 
-In-memory consent resets after restart, redeployment, or service sleep.
-
-**Deliverable:** the repository is the submission. Latest verified code commit `57acc25`; the documentation changes around it follow in a later commit. An optional Render deployment is pending.
+**Live application:** https://consent-gate.onrender.com/ on Render. Its in-memory state is shared by visitors to the same instance.
 
 ## Known limitations
 
 - State is in memory: it resets on restart, redeploy, or service sleep, and is not shared across instances.
 - Authentication and guardian verification are out of scope; the parent panel uses a trusted demo identity.
 - There is no immutable audit history, policy administration, expiry, or re-consent flow.
-- The policy is one JSON file shipped with the application; invalid or duplicate rules fail startup.
-- Demo presets derive their date of birth from the server's evaluation date, so the advertised outcome does not drift as the calendar advances.
-- The public deployment URL is not yet verified.
-
-## Submission check
-
-- [x] The complete child-to-parent journey works (19 Playwright journeys, including approve, decline, reversal, the API error contract, and the UX/accessibility checks).
-- [x] Empty-suite allowances are removed and `npm run verify` passes.
-- [x] README capabilities match the delivered code.
-- [x] The repository is the deliverable; the optional Render deployment is pending (`57acc25` code; documentation follows).
-- [x] `DECISIONS.md` and `AI-USE.md` contain final, factual information.
-- [x] Known limitations and unfinished work are explicit.

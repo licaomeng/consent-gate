@@ -56,29 +56,19 @@ flowchart LR
 ```
 
 1. **M1 Domain core** — shared types, policy validation and precedence, calendar age, input normalization, decision evaluation, consent state machine, and their unit tests.
-2. **M2 Services and HTTP** — repository, decision and consent services, the four versioned routes, and API tests.
+2. **M2 Services and HTTP** — repository, decision and consent services, three versioned route files implementing four operations, and API tests.
 3. **M3 Page and E2E** — demonstration page, presets, action matrix, demo contract tests, and the Playwright journey.
 4. **M4 Verification and handoff** — remove empty-suite allowances, run the full verification ladder, reconcile documentation with delivered behavior, and verify the deployed revision.
-5. **M5 Front-end UX and accessibility** — a user-review round: expected-outcome tags before selection, semantic colours, human-readable labels, expected-versus-actual evidence, the four-layer decision card, accessible live regions and labels, and the follow-up hardening from the staged-diff review (full random subject ids with display-only shortening, one live region with atomic status/decision commits, dismissible tooltips, generated-file hygiene, and UTC timestamps).
-
-## Review protocol
-
-A read-only reviewer must:
-
-1. derive expected behavior from the brief, decisions, and design before reading the implementation;
-2. report evidence-backed gaps rather than stylistic preferences;
-3. avoid modifying files unless explicitly reassigned as a writer.
-
-For each accepted defect, the primary agent reproduces it with a failing test, makes the smallest correction, and reruns the relevant regression tests. Sub-agent output is advisory until the primary agent and human owner review it.
+5. **M5 Front-end UX and accessibility** — a user-review round over the M3 page: expected outcomes before selection, semantic status display, accessible controls, and the review-driven hardening recorded in `AI-USE.md`.
 
 ## Per-milestone verification and adversarial review
 
-Every milestone ends with the same four obligations, recorded as one row in the review log in `AI-USE.md`:
+Every planned implementation milestone (M1–M4) ends with the same four obligations, recorded as one row in the review log in `AI-USE.md`. M5 was a later user-review round; its focused tests and findings are recorded there, but it did not add a separate mutation script.
 
 1. **Tests for the rules the milestone introduced**, including edge cases rather than only the happy path. For this project those include age boundaries (the day before, on, and after a birthday, plus February 29), rule precedence with shuffled input, jurisdiction normalization, rejection of a client-supplied evaluation date, hard-block protection, and consent-scope isolation.
-2. **A read-only adversarial reviewer agent**, run after the focused tests pass. Give it an angle that differs from the previous round, for example: derive expected age behavior from the brief, attack the API contract, or hunt for unhandled failure paths. It must derive expected behavior before reading the implementation and report evidence-backed gaps only.
+2. **A read-only adversarial reviewer agent**, run after the focused tests pass. Give it an angle that differs from the previous round, for example: derive expected age behavior from the brief, attack the API contract, or hunt for unhandled failure paths. It is read-only unless reassigned as a writer, derives expected behavior before reading the implementation, and reports evidence-backed gaps only. Its output is advisory until the primary agent and human verify it.
 3. **A failing test first for every accepted defect**, then the smallest correction, then the relevant regression run.
-4. **A mutation check for each new safety rule**: deliberately break the branch that enforces it and confirm at least one test fails. A rule whose removal turns nothing red is documentation, not a guard.
+4. **A mutation check for each new safety rule**: deliberately break the branch that enforces it and confirm at least one test fails. A rule whose removal turns nothing red is documentation, not a guard. M4's structural error classification is covered by mutation M in `tools/mutation-check-m2.sh`.
 
 Rejected reviewer suggestions are recorded with the reason. Do not repeat the same review angle in consecutive rounds.
 
@@ -88,6 +78,7 @@ Rejected reviewer suggestions are recorded with the reason. Do not repeat the sa
 - Derive tests from requirements and invariants, not only from generated code.
 - After each material change, run focused verification and inspect the diff.
 - Keep commit boundaries aligned with meaningful capabilities or corrections.
+- Never add credentials, secrets, or local configuration to the repository.
 - Update `DECISIONS.md` when a selected design changes, including the reason.
 - Update `AI-USE.md` only with material events that actually occurred.
 - Keep commit hashes, verification results, and deployed-revision claims factual.
@@ -99,7 +90,7 @@ npm ci
 npm run dev
 npm run test:run
 npm run build
-npm run test:e2e
+npm run test:e2e       # needs a prior npm run build and a one-time npx playwright install chromium
 npm run verify
 ```
 
@@ -107,11 +98,11 @@ npm run verify
 
 - `.github/workflows/ci.yml` controls CI.
 - `render.yaml` defines the Render service.
-- Render builds with `npm ci && npm run build`, starts with `npm start`, and deploys after checks pass.
+- Render builds with `npm ci && npm run build` and starts with `npm start`. Auto-deploy is off; CI triggers the deploy for a verified commit through the Render API.
 - Storage is in memory for this exercise. State resets after restart, redeployment, or service sleep.
 - Do not add unplanned infrastructure, services, or dependencies without recording the design change first.
 
-The human author owns the result. Compilation is not proof of business correctness; a milestone is complete only after diff review and focused verification.
+Compilation is not proof of business correctness; a milestone is complete only after diff review and focused verification.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

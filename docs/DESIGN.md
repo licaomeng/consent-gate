@@ -11,10 +11,6 @@ The design rests on four decisions:
 3. **Consent is narrow.** It applies to one subject, jurisdiction, and feature, and only when the winning rule permits consent.
 4. **The server explains its answer.** Every result includes a stable reason, lookup path, and matched rule or coverage gap.
 
-Together, these choices keep the important safety property visible:
-
-> **Safety invariant:** parental consent may satisfy a consent-eligible rule, but it can never override a hard block.
-
 ## 1. Scope and behavior
 
 Given a subject ID, date of birth, jurisdiction, and feature, the service evaluates calendar age, the most-specific policy rule, and current consent. It returns `allowed`, `blocked`, or `parental_consent`; when consent is eligible, a parent may approve, decline, or reverse the current choice.
@@ -23,19 +19,7 @@ Given a subject ID, date of birth, jurisdiction, and feature, the service evalua
 
 **Deliberate cut line:** authentication, guardian relationships, durable storage, notifications, policy administration, and multi-region operation. The parent panel is trusted only to make the workflow visible.
 
-### Selected semantics
-
-The brief's open questions become explicit implementation behavior:
-
-| Question | Behavior |
-|---|---|
-| Who owns consent? | A stable `subjectId`; two children with the same DOB do not share consent |
-| Which rule wins? | `US-CA` beats `US` and `*`, even if it appears later in the JSON |
-| What does consent affect? | Only a winning rule whose `if_under` value is `parental_consent` |
-| What happens after a decline? | Later checks return `blocked`; the parent may later change to approved |
-| Does evaluation create state? | No. **Check access** is read-only; **Ask a parent** is the explicit write |
-| What if a declared feature has no matching rule? | Fail closed as `blocked / no_matching_policy` |
-| What if the feature is not declared? | Reject the request as invalid input |
+The brief's open questions are resolved in [`DECISIONS.md`](../DECISIONS.md); the invariants below are their testable form.
 
 ### Invariants
 
@@ -151,9 +135,7 @@ Audit history and concurrent updates across processes are production concerns, n
 
 ## 3. API contract
 
-REST fits the four explicit operations. `POST /decisions` keeps DOB out of URLs and does not imply a hidden state change.
-
-`POST /decisions` is a computation despite using POST. `GET /consent-requests` reads state; only consent `POST` and `PATCH` mutate it. Creating a request always re-evaluates eligibility on the server.
+REST fits the four explicit operations. `POST /decisions` is a computation despite using POST, and it keeps DOB out of URLs. `GET /consent-requests` reads state; only consent `POST` and `PATCH` mutate it. A new request is created only after the server re-evaluates eligibility; an existing scope is returned unchanged.
 
 | Method | Endpoint | Success |
 |---|---|---|
@@ -267,7 +249,7 @@ A reviewer should be able to see the input, current decision, parent-controlled 
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-The Next.js server loads the validated JSON policy and passes a display-safe model to the page. The decision response supplies `lookupPath` and `matchedRule`; the browser only renders them.
+The Next.js server loads the validated JSON policy and passes a display-safe model to the page. The decision response supplies `lookupPath` and `matchedRule`. The browser renders them and reuses `lookupPath[0]` — the server-normalized jurisdiction — for the follow-up scope lookup; it never computes precedence.
 
 ### Main interaction
 
@@ -279,23 +261,30 @@ sequenceDiagram
     actor Parent
     participant UI
     participant API
-    participant Decision
     participant Consent
+    participant Decision
 
     Child->>UI: Check access
     UI->>API: POST /decisions
     API->>Decision: Evaluate policy + current consent
-    Decision-->>UI: Decision + evidence
+    Decision-->>API: Decision + evidence
+    API-->>UI: Decision + evidence
     Child->>UI: Ask a parent
     UI->>API: POST /consent-requests
-    API->>Decision: Re-check eligibility
-    API->>Consent: Create pending or reuse current request
-    Consent-->>UI: Request + post-create decision
+    API->>Consent: Create or reuse request
+    Consent->>Decision: Re-check eligibility
+    Decision-->>Consent: Eligibility + decision
+    Consent-->>API: Request + post-create decision
+    API-->>UI: Request + decision
     Parent->>UI: Approve or decline
     UI->>API: PATCH /consent-requests/:id
     API->>Consent: Update state
+    Consent-->>API: Updated request
+    API-->>UI: Updated request
     UI->>API: POST /decisions
-    Decision-->>UI: Fresh decision + evidence
+    API->>Decision: Evaluate policy + current consent
+    Decision-->>API: Fresh decision + evidence
+    API-->>UI: Fresh decision + evidence
 ```
 
 ### Visible states and actions
@@ -319,7 +308,7 @@ The parent panel follows the current request:
 | `approved` | Approved state | Change to **Decline** |
 | `declined` | Declined state | Change to **Approve** |
 
-During a request, the relevant action is disabled. Recoverable errors preserve the scenario and allow retry. Expected preset metadata never drives the decision, and manual input changes clear both the previous result and the preset expectation.
+During a request, the relevant action is disabled. Recoverable errors preserve the scenario and allow retry.
 
 ### Accessibility
 
@@ -330,11 +319,10 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 - Keyboard operation and a visible focus ring are required; the active action and scenario inputs are disabled while a request is in flight.
 - Errors use `role="alert"`; the policy table has a caption and column headers.
 - On narrow screens the child panel precedes the parent panel.
-- Decision cards use four layers with decreasing emphasis: outcome headline, status/next action, evidence list, and a demo check.
+- Decision cards use layers with decreasing emphasis: outcome headline and explanation; request status when a request exists; evidence list; demo check; then the next action.
 - Tag and status text meets WCAG AA contrast (4.5:1) and is at least 0.72rem; colour is never the only signal.
 - The parent panel lists other consent scopes for the same subject, and **New subject** resets the synthetic identity without touching the server.
-- The page title is two deliberate lines; the second sentence carries the accent colour.
-- Key controls expose an inline help button placed immediately beside the control it explains: a focusable trigger with `aria-describedby` and a `role="tooltip"` panel. It opens on hover or focus, toggles on click, and closes on Escape or an outside press, so it is usable on touch and satisfies WCAG 1.4.13.
+- Key controls expose an inline help button placed immediately beside the control it explains: a focusable trigger with `aria-describedby` and a `role="tooltip"` panel. It opens on hover or focus, is pinned open by a click (so touch users can open it), and closes on Escape or an outside press; this satisfies WCAG 1.4.13. A second click unpins it, but hover or focus keeps it visible until the pointer or focus leaves.
 - Request timestamps render as UTC inside `<time dateTime>` elements rather than in the viewer's locale.
 
 
@@ -392,9 +380,7 @@ The client separates editable input from server-evaluated state:
 | `phase` | `idle`, `checking`, `creating_request`, or `updating_request` |
 | `error` | Recoverable error from the latest operation |
 
-Data moves in one direction: **user action → controller → API → validated result → state transition → render**. Components receive state and callbacks rather than fetching independently. Each operation captures the active scenario and a request token; input changes clear stale results, cancel old requests when possible, and ignore any late response with an obsolete token.
-
-Actions are derived from the decision and consent status instead of scattered booleans. Parent controls remain bound to the active subject and scope. Controls are labelled and keyboard accessible, focus is visible, status changes are announced without relying on color, and the child panel stacks before the parent panel on narrow screens.
+Data moves in one direction: **user action → controller → API → validated result → state transition → render**. Components receive state and callbacks rather than fetching independently. Each operation captures the active scenario and a request token. Inputs and actions are disabled while a request is in flight, so operations are serialized; input changes clear stale results. Token checks ignore a late response as defense in depth; requests are not explicitly aborted.
 
 #### Performance and interaction
 
@@ -404,7 +390,7 @@ This page has little data, so interaction correctness matters more than render m
 |---|---|
 | Initial load | Server-render the shell and policy; ship no large UI or state library |
 | Decision check | One request with immediate progress feedback; no polling or page refresh |
-| Rapid input changes | Cancel or ignore stale requests |
+| Rapid input changes | Ignore stale responses through the request token; inputs are disabled while a request is in flight |
 | Repeated commands | Disable the active action; retain server idempotency as the final guard |
 | Parent decision | Wait for confirmation, then run one fresh decision check |
 | Rendering | Add memoization only if measurement finds expensive repeated work |
@@ -432,9 +418,7 @@ Each risk is tested at the narrowest useful layer. Tests pin the evaluation date
 - **Consent:** duplicate creation, repeated actions, reversal, hard-block protection, scope isolation.
 - **UI:** stale responses, double submission, failed API calls, and repeatable demo presets.
 
-Frontend verification should also cover the action matrix: hard blocks never expose **Ask a parent**, pending requests cannot be recreated, and only the active subject's request can be changed. Playwright covers the full journey; pure selectors or state transitions should be tested below the browser layer when they contain branching behavior.
-
-Tests should not repeat every policy permutation at every layer.
+UI coverage must include the action matrix: hard blocks never expose **Ask a parent**, pending requests cannot be recreated, and only the active subject's request can be changed. Do not repeat every policy permutation at every layer.
 
 ### Failure semantics
 
@@ -450,11 +434,9 @@ Failures must not silently become access decisions. The exercise and its product
 | Parent update succeeds but decision refresh fails | Keep the confirmed request state visible and allow the decision check to be retried |
 | An older browser response arrives late | Ignore it because it no longer matches the active request token |
 
-The in-memory exercise repository has no external availability failure, but the service contract must not assume that a durable production repository is infallible.
-
 ### Requirement traceability
 
-Before submission, each requested deliverable must have visible evidence. This table maps each requirement to the tests and documents that provide that evidence.
+Each brief requirement maps to delivered evidence:
 
 | Brief requirement | Evidence required at handoff |
 |---|---|

@@ -60,7 +60,7 @@ sequenceDiagram
     A->>API: Approve, version 3
     B->>API: Decline, version 3
     API->>DB: UPDATE where version = 3
-    DB-->>API: Updated; version = 4
+    DB-->>API: Updated, version 4
     API-->>A: 200 approved, version 4
     API->>DB: UPDATE where version = 3
     DB-->>API: No row updated
@@ -90,7 +90,7 @@ Consent validity over time is a product and legal decision, not a storage detail
 | Consent reaches an expiry date | Withhold access until the required consent is renewed |
 | Account or guardian relationship ends | Revoke enforcement state and apply the approved retention policy to audit history |
 
-Binding consent to a `policy_version` makes the original basis auditable, but version changes should not automatically invalidate every approval. The policy owner must define compatibility or migration rules for each change.
+A policy version makes the original basis auditable. A version change should not automatically invalidate approvals; the policy owner defines compatibility rules for each change.
 
 Keep notifications off the enforcement path. If audit publication becomes asynchronous, use a transactional outbox so a committed parent action cannot lose its audit event.
 
@@ -109,7 +109,7 @@ flowchart LR
     Browser --> Edge --> Identity --> Validate --> Authorize --> Services --> Data
 ```
 
-The exercise intentionally trusts synthetic identities to expose the workflow. In production, authentication establishes who the actor is; authorization separately proves that the actor may view or change consent for this subject and scope. Browser-provided identity, guardian claims, and subject attributes must be authenticated or verified before enforcement.
+In production, authentication establishes who the actor is; authorization separately proves that the actor may view or change consent for this subject and scope. Browser-provided identity, guardian claims, and subject attributes must be authenticated or verified before enforcement.
 
 The browser may display decision evidence, but it never becomes an enforcement point. Policy, guardian relationships, and consent remain server-owned. DOB and consent history are sensitive data: minimize collection, keep them out of URLs and routine logs, restrict audit access, and define deletion and retention rules with legal and privacy owners.
 

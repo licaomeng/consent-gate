@@ -15,11 +15,9 @@ Read the sources listed in `AGENTS.md` before changing code. When they do not re
 
 ## Claude-specific workflow
 
-Work on one approved milestone at a time. State its scope and verification, implement only that scope, report the diff and evidence, then stop for human review. Do not begin the next milestone automatically.
-
-Before final handoff, remove empty-suite allowances, run the full verification ladder, reconcile documentation with delivered behavior, and update `AI-USE.md` with actual events.
+Stop at each milestone boundary: report the diff and verification evidence; do not start the next milestone until it is approved.
 
 ## Safety
 
-- Never add credentials or expose local configuration.
+- Never commit or expose credentials, secrets, or local configuration.
 - Never weaken or delete a failing test merely to make a gate pass.
