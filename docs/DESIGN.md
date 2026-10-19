@@ -411,6 +411,14 @@ Each risk is tested at the narrowest useful layer. Tests pin the evaluation date
 | Demo contract, Vitest | UI metadata matches policy | all presets produce their advertised result |
 | E2E, Playwright | Browser, API, services, and state are wired together | consent loop, precedence evidence, hard block versus missing coverage |
 
+### Coverage measurement
+
+`npm run test:coverage` runs Vitest with the V8 provider. It covers the server-side modules imported by tests: domain, application, repository, server, and services. Client components are exercised by Playwright and are not included in this percentage.
+
+Current: 98.62% statements, 95.5% branches, 100% functions, 98.94% lines. The remaining branches are defensive paths the API cannot reach: an inconsistent repository index, a missing record on the repository write path, and an out-of-range month fallback. Manufacturing state to cover them would test the test, not the product.
+
+Coverage is a diagnostic, not a target. The guards are the mutation checks for safety rules and the Playwright journeys for wiring. A high percentage with a vacuous assertion is still a weak suite.
+
 ### Highest-risk cases
 
 - **Policy:** duplicate keys, shuffled rows, undeclared features, missing coverage.

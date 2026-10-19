@@ -109,7 +109,9 @@ The exercise permits an in-memory implementation. Deliberate omissions:
 - Rate limiting and abuse controls on the consent lookup endpoints.
 - Localization and jurisdiction data beyond the supplied rule set.
 
-## Open production questions
+## Open product questions
+
+These need a product or legal owner. They are not implementation gaps.
 
 - When does consent expire, and which policy changes require re-consent?
 - Can consent cross jurisdictions, products, purposes, or guardian relationships?
