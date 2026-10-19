@@ -49,9 +49,9 @@ An undeclared feature is invalid input. A declared feature with no applicable ru
 
 ## Dates and input normalization
 
-DOB is parsed as a real `YYYY-MM-DD` calendar date; invalid and future dates are rejected. One injected evaluation date is used for the entire request and returned as `evaluatedAt`, so the reported age can be reproduced. A February 29 birthday advances on March 1 in a non-leap year unless a jurisdiction-specific rule says otherwise. Operational timestamps use UTC ISO 8601.
+DOB is parsed as a real `YYYY-MM-DD` calendar date; invalid and future dates are rejected. The evaluation date is owned by the server and injected once per request; the request body never carries it. A request that supplies an evaluation date is rejected as invalid input rather than having the value ignored, so a caller cannot declare its own age. The injected date is returned as `evaluatedAt`, so the reported age can be reproduced. A February 29 birthday advances on March 1 in a non-leap year unless a jurisdiction-specific rule says otherwise. Operational timestamps use UTC ISO 8601.
 
-Jurisdictions are trimmed and uppercased before matching. Feature identifiers must exactly match `policy.features`; silently correcting an unknown feature could hide a client defect.
+Jurisdictions are trimmed and uppercased before matching, then checked against a jurisdiction code shape: two uppercase letters, optionally followed by a hyphen and a one-to-three-character uppercase alphanumeric subdivision (`US`, `US-CA`). A value that is empty after normalization or fails that shape is rejected as `validation_error`; it never falls through to the `*` rule. A well-formed jurisdiction that is absent from policy remains valid input: it follows the normal subdivision → country → `*` lookup and may legitimately match the wildcard rule or return `no_matching_policy`. Feature identifiers must exactly match `policy.features`; silently correcting an unknown feature could hide a client defect.
 
 ## Storage
 

@@ -213,6 +213,8 @@ type ConsentRequest = {
 };
 ```
 
+`Scenario` is the complete request shape for decision and creation calls. The evaluation date is server-owned: it is injected once per request and is absent from the request body. A request that supplies an evaluation date is rejected as `validation_error` rather than having the value ignored. Jurisdiction input is trimmed and uppercased, then checked for a jurisdiction code shape (`^[A-Z]{2}(-[A-Z0-9]{1,3})?$`); malformed values are `validation_error` and never fall through to `*`. A well-formed but unknown jurisdiction follows the normal lookup and may match `*` or end in `no_matching_policy`.
+
 `policy.json` is the external configuration shape (`min_age`, `if_under`). The loader validates it once and maps it to the camel-case domain type above; routes and UI do not perform their own conversion.
 
 ### Response semantics
@@ -236,7 +238,7 @@ Errors use `{ "error": { "code": string, "message": string } }`. Reason codes ex
 
 | Status | Code | Use |
 |---:|---|---|
-| `400` | `validation_error` | Malformed JSON, invalid date, missing field, unknown feature, invalid status |
+| `400` | `validation_error` | Malformed JSON, invalid date or jurisdiction, missing field, unknown feature, client-supplied evaluation date, invalid status |
 | `404` | `request_not_found` | Consent request ID does not exist |
 | `409` | `consent_not_required` | Current policy does not permit creating a consent request |
 | `503` | `dependency_unavailable` | Required consent state cannot be read or written safely |
