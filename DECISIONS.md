@@ -1,125 +1,78 @@
 # Decisions
 
-The brief leaves several behaviors open. This file records each interpretation that changes behavior, why it was chosen, and what it costs. The resulting contracts live in [`docs/DESIGN.md`](docs/DESIGN.md); deferred production design lives in [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md).
+The brief asks for a small service that decides what a user may do, based on age, jurisdiction, and parental consent, with rules aimed at under-18 use. It fixes the rules and the three outcomes but leaves the operating semantics open: who consent belongs to, which rule wins, what happens when no rule matches, and how a child is identified without accounts.
 
-## At a glance
+This file records the choices that affect behavior, the alternatives that were rejected, and what each choice costs. All decisions below are accepted and implemented. The resulting contracts are in [`docs/DESIGN.md`](docs/DESIGN.md); deferred production design is in [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md).
 
-| Area | Decision | Why | Cost |
-|---|---|---|---|
-| Consent scope | Key consent by `subjectId + jurisdiction + feature` | Consent must not leak across children, features, or jurisdictions | Requires a synthetic subject id in the demo |
-| Rule resolution | Exact subdivision → country → `*`; file order never wins | Deterministic specificity, matching the supplied `US-CA` and `US-TX` rules | Assumes the hierarchy is derivable by splitting the code |
-| Read/write boundary | Checks are read-only; **Ask a parent** is the only write | Retries and refreshes must not create requests | The product needs an explicit consent action |
-| Hard blocks | Consent never overrides `blocked` | The hard block is the legal floor | An old approval can be superseded by a stricter rule |
-| Coverage gaps | Fail closed as `blocked / no_matching_policy` | A missing rule must not grant access | The UI must distinguish a gap from an explicit prohibition |
-| Consent lifecycle | One reversible current state per scope | Supports approve, decline, and change of mind without event sourcing | No immutable audit history |
-| Storage | In-memory repository behind an interface | The brief allows it; keeps focus on semantics | State is not durable or shared across instances |
-| Policy source | Rules load from `src/data/policy.json` and fail startup if invalid | The brief requires data, not baked-in logic | A policy change requires a redeploy |
-| Dates | Server-owned evaluation date; strict calendar validation | Age is security-relevant and must not be client-declared | Malformed input is rejected; case and whitespace are normalized |
-| API and UI | REST; policy stays server-side; the page renders evidence | Keeps one enforcement point and prevents rule drift | The UI depends on server-supplied `lookupPath` and `matchedRule` |
+## Goals and non-goals
 
-## Consent scope
+The service must be deterministic, server-owned, and explainable: every answer carries a stable reason, lookup path, and matched rule. It must support a reversible parental-consent lifecycle without letting consent override a hard block.
 
-**Decision.** Consent is keyed by `subjectId + jurisdiction + feature`. Date of birth is an attribute, not an identifier.
+It is not a production identity or consent platform. Authentication, guardian verification, durable storage, audit history, policy administration, notifications, and multi-region operation are out of scope; the demo uses a trusted parent view and in-memory state.
 
-**Why.** Two children can share a birthday, and one child can have different consent outcomes for different features or jurisdictions. Keying by DOB would merge unrelated people.
+## 1. Consent belongs to a subject and a scope
 
-**Cost.** The demo needs a synthetic `subjectId` because accounts are out of scope; a production product would derive the subject and guardian relationship from authenticated profiles. A production scope would also likely include product, purpose, policy version, and expiry.
+**Context.** Two children can share a birthday, and one child can have different outcomes for chat, purchases, and profile photos. Date of birth is an attribute, not an identifier.
 
-## Rule resolution
+**Decision.** Consent is keyed by `subjectId + jurisdiction + feature`. The demo generates a synthetic subject id; a production product would derive it from an authenticated profile.
 
-**Decision.** The evaluator checks the exact subdivision, then the country, then the global `*` rule. File order never determines the winner. Multiple matching rules are not combined.
+**Consequences.** The demo needs a subject id that is stable for the walkthrough but not a real identity. Production scope would likely add product, purpose, policy version, and expiry.
 
-**Why.** Specificity is deterministic and fits the supplied `US-CA` and `US-TX` data. Combining rules would require conflict semantics the brief does not define.
+**Alternatives considered.** Keying by DOB would merge unrelated children. Keying by subject alone would let consent for one feature satisfy another. Keying by feature alone would let one child's approval satisfy another's.
 
-**Cost.** This assumes a jurisdiction hierarchy can be derived by splitting the code. A production policy should model inheritance explicitly.
+## 2. The most specific rule wins
 
-## Read and write boundary
+**Context.** The supplied policy contains global, country, and subdivision rules. JSON order is an implementation detail, not a precedence rule.
 
-**Decision.** **Check access** is read-only. **Ask a parent** is the explicit operation that creates or reuses a request.
+**Decision.** The evaluator checks the exact subdivision, then the country, then `*`, and selects the first rule found on that ladder. It never combines rules.
 
-**Why.** Decision checks may run during refresh, retry, prefetch, or background work. Allowing them to create state could generate unintended requests or notifications.
+**Consequences.** Reordering the JSON cannot change a decision, and `US-CA` beats `US` and `*` deterministically. The model assumes a jurisdiction hierarchy can be derived by splitting the code; production should model inheritance explicitly.
 
-**Cost.** The UI must offer a separate action. The server re-evaluates the scenario before creating a request, so a client cannot claim consent is available for an already allowed feature or a hard block.
+**Alternatives considered.** First-match-in-file order makes behavior depend on authoring order. Merging all matching rules requires conflict semantics the brief does not define.
 
-## Consent lifecycle and idempotency
+## 3. Access checks are read-only; asking a parent is the only write
 
-**Decision.** One mutable record represents the current state for a scope. It starts as `pending`, can become `approved` or `declined`, and can move between resolved states when a parent changes their mind.
+**Context.** A decision check may run during a refresh, retry, prefetch, or background job. If it created state, a read could generate a request or notification that nobody asked for.
 
-**Decision.** Creating an existing scope returns the record before new-request eligibility is evaluated. Repeating the current target state is also harmless.
+**Decision.** **Check access** is read-only. **Ask a parent** is the only operation that creates or reuses a consent request. Before creating one, the server re-evaluates the scenario and rejects an adult or a hard block as `consent_not_required`.
 
-**Why.** Idempotent retries without event sourcing; change of mind stays one update.
+**Consequences.** The UI must offer an explicit action. The server, not the client, decides whether a request is eligible. The demo can refresh and retry without side effects.
 
-**Cost.** Simultaneous opposing writes are not solved. Production would add a unique scope constraint, a version check such as `If-Match`, and immutable audit events.
+**Alternatives considered.** Creating a request automatically whenever the decision is `parental_consent` produces state the user never requested. Client-side eligibility would duplicate policy logic and let the browser claim consent is available.
 
-## Hard blocks
+## 4. A hard block cannot be overridden; a missing rule fails closed
 
-**Decision.** Consent affects only a winning rule whose under-age action is `parental_consent`. It never overrides `blocked`, including when an older approval exists.
+**Context.** Some rules block under-age use outright (`GB` chat, `US-TX` video upload, `DE` purchases). Other rules permit parental consent. A declared feature can also have no applicable rule at all.
 
-**Why.** The hard block is the legal floor.
+**Decision.** Consent affects only a winning rule whose under-age action is `parental_consent`. It never overrides `blocked`, including when an older approval exists. An undeclared feature is invalid input; a declared feature with no applicable rule returns `blocked / no_matching_policy`.
 
-**Cost.** A stricter current rule can ignore an old approval.
+**Consequences.** A stricter current rule can ignore an old approval; that is intentional. Operations should alert on `no_matching_policy` so a coverage gap is not mistaken for normal blocking, and the UI can distinguish the two.
 
-## Coverage gaps and invalid features
+**Alternatives considered.** Letting consent override any under-age rule would break the legal floor. Failing open on missing coverage would grant access wherever the policy has a gap. Treating an undeclared feature as a coverage gap would hide a client defect. A fourth production outcome (for example `unavailable`) is a reasonable future change but would break the brief's three-outcome contract.
 
-**Decision.** An undeclared feature is invalid input. A declared feature with no applicable rule fails closed as `blocked / no_matching_policy`.
+## 5. Identity is synthetic in the demo, and state is in memory
 
-**Why.** A missing rule must not grant access, but failing closed should be distinguishable from an explicit prohibition.
+**Context.** Accounts, guardian verification, and durable storage are outside the brief, which explicitly allows an in-memory implementation.
 
-**Cost.** Operations must alert on `no_matching_policy` so a coverage gap is not mistaken for normal blocking.
+**Decision.** The demo generates a synthetic subject id and stores consent in an in-memory repository behind an interface. A parent can approve, decline, and reverse the current state.
 
-## Dates and input normalization
+**Consequences.** State resets on restart or redeploy and is not shared across instances. Production would move to PostgreSQL, because consent needs uniqueness, transactions, conditional updates, and auditable history. Browser storage would put authoritative consent in the wrong trust boundary.
 
-**Decision.** A DOB must be a real `YYYY-MM-DD` calendar date. Invalid, implausible, and future dates are rejected. Dates before 1900 are implausible because a nonsensical value such as `0000-01-01` would satisfy every threshold.
+**Alternatives considered.** Requiring real accounts would expand the scope beyond the exercise. Keeping state in the browser would make the client authoritative. Shipping without stored state would make reversal impossible to demonstrate. Adding PostgreSQL now would trade policy and workflow time for migration work.
 
-**Decision.** A February 29 birthday advances on March 1 in a non-leap year unless a jurisdiction-specific rule says otherwise.
+## 6. The server owns dates and input normalization
 
-**Decision.** The evaluation date is owned by the server, injected once per request, and returned as `evaluatedAt`. A client-supplied evaluation date is rejected rather than ignored, so a caller cannot declare its own age.
+**Context.** Age is an enforcement input, and a caller must not be able to declare its own age. Dates and jurisdiction codes arrive from users and need one canonical interpretation.
 
-**Decision.** Jurisdictions are trimmed and uppercased, then checked against `^[A-Z]{2}(-[A-Z0-9]{1,3})?$`. A malformed value is a `validation_error` and never falls through to `*`. A well-formed but unknown jurisdiction stays valid input and follows the normal lookup.
+**Decision.** A DOB must be a real `YYYY-MM-DD` calendar date; invalid, implausible (before 1900), and future dates are rejected. February 29 advances to March 1 in a non-leap year. The evaluation date is owned by the server, injected once per request, and returned as `evaluatedAt`; a request that supplies its own date is rejected rather than silently ignored.
 
-**Decision.** A feature must exactly match `policy.features`; the server does not silently correct it.
+Jurisdictions are trimmed and uppercased, then checked against `^[A-Z]{2}(-[A-Z0-9]{1,3})?$`. A malformed value is a `validation_error` and never falls through to `*`; a well-formed but unknown jurisdiction stays valid and follows the normal lookup. Features must exactly match `policy.features`. Operational timestamps are stored and returned as UTC ISO 8601.
 
-**Decision.** Operational timestamps (`createdAt`, `updatedAt`) are stored and returned as UTC ISO 8601.
+**Consequences.** Input is strict: clients receive errors instead of best-effort corrections. The reported age is reproducible, and a raw lowercase jurisdiction cannot bypass a hard block.
 
-**Why.** Age and scope are enforcement inputs. Rejecting bad input exposes client defects instead of hiding them, and a server-owned evaluation date makes the reported age reproducible.
+**Alternatives considered.** Accepting a client-supplied evaluation date would let the caller choose its age. Ignoring the field instead of rejecting it would leave ambiguous behavior. Permissive date parsing would accept values such as February 30. Correcting unknown feature names would hide a client defect.
 
-**Cost.** Input is strict: clients receive errors instead of best-effort corrections.
-
-## Storage
-
-**Decision.** The exercise uses an in-memory repository behind an interface.
-
-**Why.** It supports the required stateful workflow without adding migrations and database operations to a small take-home.
-
-**Cost.** State resets after restart or redeployment, and there is no cross-instance consistency guarantee.
-
-**Production direction.** PostgreSQL, because consent needs uniqueness, transactions, conditional updates, and auditable history. Browser storage would put authoritative consent in the wrong trust boundary.
-
-## API and UI
-
-**Decision.** The API is REST. `POST /api/v1/decisions` carries structured input so the DOB stays out of URLs.
-
-**Decision.** Policy evaluation stays on the server. The page receives a display-safe policy model plus the server's `lookupPath`, `matchedRule`, and reason; it never recomputes precedence.
-
-**Decision.** Demo presets generate a fresh subject and carry an age rather than a fixed DOB. The page derives the DOB from the server's evaluation date.
-
-**Why.** REST keeps a small command workflow explicit. Server-side evaluation prevents browser and server rules from drifting. Age-based presets keep the advertised outcome aligned with the engine as the calendar advances.
-
-**Cost.** GraphQL would add schema and resolver machinery without solving a query-shape problem here. Preset metadata remains presentation-only and must be checked by a contract test.
-
-## Policy source
-
-**Decision.** All rules come from `src/data/policy.json`. The policy is validated at startup; invalid rules, duplicate features, duplicate scope keys, undeclared features, and invalid jurisdictions stop the process.
-
-**Why.** The brief requires the rules to be data rather than baked into routes or UI. Failing at startup is safer than serving with a partially valid policy.
-
-**Cost.** The policy cannot be changed at runtime, and a new rule set requires a redeploy. Policy administration and versioning are out of scope.
-
-## Verification
-
-Policy and age rules are tested as pure units. Consent behavior is tested through services and the real in-memory repository. HTTP mapping is tested at the route boundary, and critical journeys run in Playwright. Each demo preset is evaluated against the real engine so presentation metadata cannot drift. Safety rules also have mutation checks: removing a guard must turn at least one test red.
-
-## Skipped for time
+## Deferred work
 
 The exercise permits an in-memory implementation. Deliberate omissions:
 
