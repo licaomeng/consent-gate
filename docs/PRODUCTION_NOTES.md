@@ -48,11 +48,11 @@ erDiagram
 
 Moving from the exercise to a durable store is a staged change, not a swap:
 
-- Create the schema with expand-only migrations and keep the application compatible with old and new columns during the rollout.
-- Backfill existing scopes, then shadow-read from PostgreSQL while the in-memory path still serves decisions.
-- Cut writes over behind a flag and keep a rollback path to the last known-good revision.
-- Reconcile counts and sampled records before deleting the old path.
-- Run restore drills; a backup that has never been restored is not a recovery plan.
+- **Schema.** Create expand-only migrations and keep the application compatible with old and new columns during the rollout.
+- **Backfill.** Replay existing scopes, then shadow-read from PostgreSQL while the in-memory path still serves decisions.
+- **Cutover.** Move writes behind a flag and keep a rollback path to the last known-good revision.
+- **Reconcile.** Compare counts and sampled records before deleting the old path.
+- **Recovery.** Run restore drills; a backup that has never been restored is not a recovery plan.
 
 ## Idempotency and concurrent writes
 
@@ -132,12 +132,31 @@ The browser may display decision evidence, but it never becomes an enforcement p
 
 ## Privacy and data lifecycle
 
-DOB and consent history identify a child. Production needs explicit rules, not best effort:
+DOB and consent history identify a child. The lifecycle is collect, derive, store, use, then delete, with access and correction available throughout.
 
-- Minimize collection: derive age from DOB and avoid retaining raw DOB when a birth year or derived age is enough.
+```mermaid
+flowchart LR
+    C[Collect DOB and guardian evidence] --> D[Derive age, keep the minimum]
+    D --> S[Store consent state and audit event]
+    S --> U[Serve decisions and parent actions]
+    U --> R{Retention or erasure trigger?}
+    R -- No --> U
+    R -- Expiry or valid request --> X[Delete or anonymize]
+    X --> A[Record the deletion event]
+```
+
+| Data class | Examples | Handling |
+|---|---|---|
+| Age evidence | DOB | Derive age; avoid retaining raw DOB when birth year or age is enough |
+| Consent state | scope, status, policy version | Keep while active; delete or anonymize on expiry or erasure, subject to legal hold |
+| Audit events | actor, time, status change | Append-only, access-controlled; retention follows legal policy |
+| Guardian evidence | verification method and time | Store the result, not identity documents; restrict access |
+| Telemetry | request ID, outcome, latency | No DOB or guardian PII; aggregate where possible |
+
+Cross-cutting rules:
+
 - Keep PII out of URLs, logs, traces, and error messages.
 - Encrypt in transit and at rest; rotate keys and restrict decrypt access.
-- Define retention per data class; delete or anonymize on expiry and on a valid erasure request, subject to legal hold.
 - Support subject and guardian access and correction requests, and log who accessed audit data.
 - Separate duties: policy changes require an approver other than the author, and audit access is reviewed.
 
@@ -149,10 +168,12 @@ Deployment should preserve a last known-good revision. Liveness confirms that th
 
 Production operations also need:
 
-- SLOs and alerts for decision latency and errors, consent completion, stale-version conflicts, storage failures, and policy-version drift.
-- Backups with a defined RPO and RTO, plus regular restore drills and a documented rollback path.
-- Rate limits and per-actor quotas on lookup and write endpoints.
-- Key rotation, secret management, and access reviews for policy and consent data.
-- Runbooks for a storage outage, a policy rollback, and a suspected guardian-account compromise.
-- Load and failover testing; multi-region only with an explicit consistency model.
-- A versioned API with a deprecation window and stable reason and status codes.
+| Area | Control |
+|---|---|
+| Reliability | SLOs and alerts for decision latency and errors, consent completion, stale-version conflicts, storage failures, and policy-version drift |
+| Recovery | Backups with a defined RPO and RTO, regular restore drills, and a documented rollback path |
+| Abuse | Rate limits and per-actor quotas on lookup and write endpoints |
+| Secrets | Key rotation, secret management, and access reviews for policy and consent data |
+| Incidents | Runbooks for a storage outage, a policy rollback, and a suspected guardian-account compromise |
+| Scale | Load and failover testing; multi-region only with an explicit consistency model |
+| API | A versioned API with a deprecation window and stable reason and status codes |
