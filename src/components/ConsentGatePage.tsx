@@ -2,6 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  consentStatusLabel,
+  expectedTagLabel,
+  featureLabel,
+  humanizeCode,
+} from "@/application/labels";
+import DecisionCard, { decisionSummary } from "@/components/DecisionCard";
+import HelpTip from "@/components/HelpTip";
+import {
   actionsFor,
   findRequestForScenario,
   isStale,
@@ -33,12 +41,6 @@ type ApiErrorBody = {
   };
 };
 
-const DECISION_LABEL: Record<DecisionResult["decision"], string> = {
-  allowed: "Allowed",
-  blocked: "Blocked",
-  parental_consent: "Needs parental consent",
-};
-
 const PHASE_LABEL: Record<UiPhase, string> = {
   idle: "",
   checking: "Checking access…",
@@ -46,11 +48,11 @@ const PHASE_LABEL: Record<UiPhase, string> = {
   updating_request: "Updating the request…",
 };
 
-function newSubjectId(): string {
+function newSubjectId(prefix: string): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+    return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
   }
-  return `subject-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function errorMessage(body: unknown): string {
@@ -89,6 +91,7 @@ export default function ConsentGatePage({
   const [active, setActive] = useState<Scenario | null>(null);
   const [decision, setDecision] = useState<DecisionResult | null>(null);
   const [request, setRequest] = useState<ConsentRequest | null>(null);
+  const [requests, setRequests] = useState<ConsentRequest[]>([]);
   const [phase, setPhase] = useState<UiPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [presetHint, setPresetHint] = useState<DemoScenario | null>(null);
@@ -101,18 +104,29 @@ export default function ConsentGatePage({
   // server-rendered markup and the hydrated client agree.
   useEffect(() => {
     setDraft((current) =>
-      current.subjectId ? current : { ...current, subjectId: newSubjectId() },
+      current.subjectId ? current : { ...current, subjectId: newSubjectId("demo") },
     );
   }, []);
 
   const busy = phase !== "idle";
   const actions = actionsFor(decision, request);
+  const otherRequests = requests.filter((entry) => entry.id !== request?.id);
+  const policyRows = [...policy.rules].sort((left, right) => {
+    const rank = (jurisdiction: string) =>
+      jurisdiction === "*" ? 2 : jurisdiction.includes("-") ? 0 : 1;
+    return (
+      rank(left.jurisdiction) - rank(right.jurisdiction) ||
+      left.jurisdiction.localeCompare(right.jurisdiction) ||
+      left.feature.localeCompare(right.feature)
+    );
+  });
 
   function invalidateResults(): void {
     tokenRef.current += 1;
     setActive(null);
     setDecision(null);
     setRequest(null);
+    setRequests([]);
     setError(null);
     setPresetHint(null);
     setPhase("idle");
@@ -129,7 +143,16 @@ export default function ConsentGatePage({
   function selectPreset(preset: DemoScenario): void {
     invalidateResults();
     setPresetHint(preset);
-    setDraft(materializeDemoScenario(preset, newSubjectId(), evaluationDate));
+    setDraft(materializeDemoScenario(preset, newSubjectId(preset.id), evaluationDate));
+  }
+
+  function createNewSubject(): void {
+    if (busy) return;
+    invalidateResults();
+    setDraft((current) => ({
+      ...current,
+      subjectId: newSubjectId("manual"),
+    }));
   }
 
   function begin(nextPhase: Exclude<UiPhase, "idle">): number {
@@ -140,7 +163,7 @@ export default function ConsentGatePage({
     return token;
   }
 
-  async function fetchRequestFor(scenario: Scenario): Promise<ConsentRequest | null> {
+  async function fetchRequestsFor(scenario: Scenario): Promise<ConsentRequest[]> {
     const response = await fetch(
       `/api/v1/consent-requests?subjectId=${encodeURIComponent(scenario.subjectId)}`,
     );
@@ -150,7 +173,7 @@ export default function ConsentGatePage({
       throw new Error("Consent state could not be read — the check was not completed.");
     }
     const body = (await response.json()) as { requests?: ConsentRequest[] };
-    return findRequestForScenario(body.requests ?? [], scenario);
+    return body.requests ?? [];
   }
 
   async function checkAccess(): Promise<void> {
@@ -180,18 +203,20 @@ export default function ConsentGatePage({
         ...scenario,
         jurisdiction: evaluated.lookupPath[0] ?? scenario.jurisdiction,
       };
-      const currentRequest = await fetchRequestFor(normalizedScenario);
+      const currentRequests = await fetchRequestsFor(normalizedScenario);
       if (isStale(tokenRef.current, token)) return;
 
       setActive(normalizedScenario);
       setDecision(evaluated);
-      setRequest(currentRequest);
+      setRequests(currentRequests);
+      setRequest(findRequestForScenario(currentRequests, normalizedScenario));
       setPhase("idle");
     } catch (cause) {
       if (isStale(tokenRef.current, token)) return;
       setActive(null);
       setDecision(null);
       setRequest(null);
+      setRequests([]);
       setError(
         cause instanceof Error && cause.message
           ? cause.message
@@ -225,6 +250,10 @@ export default function ConsentGatePage({
         decision: DecisionResult;
       };
       setRequest(payload.request);
+      setRequests((current) => [
+        payload.request,
+        ...current.filter((entry) => entry.id !== payload.request.id),
+      ]);
       setDecision(payload.decision);
       setPhase("idle");
     } catch {
@@ -255,7 +284,11 @@ export default function ConsentGatePage({
         setPhase("idle");
         return;
       }
-      setRequest(updateBody as ConsentRequest);
+      const updated = updateBody as ConsentRequest;
+      setRequest(updated);
+      setRequests((current) =>
+        current.map((entry) => (entry.id === updated.id ? updated : entry)),
+      );
 
       // No optimistic update: run a fresh decision after the parent action.
       const decisionResponse = await fetch("/api/v1/decisions", {
@@ -290,50 +323,100 @@ export default function ConsentGatePage({
   return (
     <main className="page">
       <header className="masthead">
-        <h1>Consent Gate</h1>
-        <p>
-          Enter a subject, jurisdiction, and feature. The server evaluates the
-          policy and returns the decision with its evidence.
+        <p className="eyebrow">CONSENT GATE</p>
+        <h1>
+          <span>Decide access.</span>
+          <span className="title-accent">Ask a parent when it matters.</span>
+        </h1>
+        <p className="intro">
+          A small policy engine that applies jurisdiction rules and keeps the
+          latest parental decision. The server evaluates every rule; this page
+          only renders the evidence.
         </p>
       </header>
 
-      <section className="demo-cases" aria-labelledby="demo-heading">
-        <h2 id="demo-heading">Demo cases</h2>
-        <div className="chip-row">
-          {presets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className="chip"
-              onClick={() => selectPreset(preset)}
-              disabled={busy}
-            >
-              {preset.label}
-            </button>
-          ))}
+      <section className="scenario-panel" aria-labelledby="demo-heading">
+        <div className="section-heading compact-heading">
+          <span className="step" aria-hidden="true">0</span>
+          <div>
+            <div className="heading-line">
+              <h2 id="demo-heading">Choose a demo case</h2>
+              <HelpTip id="demo-cases" label="About demo cases">
+                Each demo creates a fresh synthetic subject and fills the form
+                with its scenario. The expected tag is presentation-only; the
+                server evaluates the real decision.
+              </HelpTip>
+            </div>
+            <p>Each selection creates a fresh synthetic subject, so every walkthrough starts clean.</p>
+          </div>
+        </div>
+        <div className="scenario-grid">
+          {presets.map((preset) => {
+            const selected = presetHint?.id === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                className={`scenario${selected ? " scenario-selected" : ""}`}
+                aria-pressed={selected}
+                aria-label={`${preset.label}: ${expectedTagLabel(preset.expected.decision)}`}
+                aria-describedby={`${preset.id}-purpose`}
+                data-testid={`demo-${preset.id}`}
+                onClick={() => selectPreset(preset)}
+                disabled={busy}
+              >
+                <span
+                  className={`expected expected-${preset.expected.decision}`}
+                  data-testid={`expected-${preset.id}`}
+                >
+                  {expectedTagLabel(preset.expected.decision)}
+                </span>
+                <strong>{preset.label}</strong>
+                <small id={`${preset.id}-purpose`}>{preset.purpose}</small>
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <div className="panels">
-        <section className="panel" aria-labelledby="child-heading">
-          <h2 id="child-heading">Child / product</h2>
-          <p className="subject">
-            Demo subject: <code>{draft.subjectId || "…"}</code>
-          </p>
+      {error ? (
+        <div className="alert" role="alert" data-testid="error">
+          {error}
+        </div>
+      ) : null}
 
-          {presetHint ? (
-            <div className="preset-hint" data-testid="preset-hint">
-              <p>
-                <strong>{presetHint.label}</strong> — expected:{" "}
-                {DECISION_LABEL[presetHint.expected.decision]} (
-                {presetHint.expected.reason})
-              </p>
-              <p className="muted">{presetHint.purpose}</p>
+      <div className="workspace">
+        <section className="panel" aria-labelledby="child-heading" aria-busy={busy}>
+          <div className="section-heading">
+            <span className="step" aria-hidden="true">1</span>
+            <div>
+              <h2 id="child-heading">Check feature access</h2>
+              <p>Acting as the child&apos;s product experience.</p>
             </div>
-          ) : null}
+          </div>
+          <div className="subject-line">
+            <p className="subject">
+              Demo subject: <code>{draft.subjectId || "…"}</code>
+            </p>
+            <div className="subject-actions">
+              <button
+                className="secondary small"
+                type="button"
+                data-testid="new-subject"
+                onClick={createNewSubject}
+                disabled={busy}
+              >
+                New subject
+              </button>
+              <HelpTip id="new-subject" label="About New subject" align="right">
+                Creates a new synthetic subject. Earlier consent for the previous
+                subject is not reused; the server records stay in memory.
+              </HelpTip>
+            </div>
+          </div>
 
           <form
-            className="scenario"
+            className="scenario-form"
             onSubmit={(event) => {
               event.preventDefault();
               void checkAccess();
@@ -365,69 +448,41 @@ export default function ConsentGatePage({
             >
               {policy.features.map((feature) => (
                 <option key={feature} value={feature}>
-                  {feature}
+                  {featureLabel(feature)}
                 </option>
               ))}
             </select>
 
-            <button type="submit" disabled={busy || !draft.subjectId}>
+            <button className="primary" type="submit" disabled={busy || !draft.subjectId}>
               Check access
             </button>
           </form>
 
-          {error ? (
-            <p className="error" role="alert" data-testid="error">
-              {error}
-            </p>
-          ) : null}
+          <p
+            className="sr-only"
+            role="status"
+            aria-live="polite"
+            data-testid="decision-summary"
+          >
+            {decision ? decisionSummary(decision, request) : ""}
+          </p>
 
-          <div className="result" aria-live="polite">
+          <div className="result" data-testid="result-region">
             {decision ? (
-              <>
-                <p className="decision">
-                  <strong data-testid="decision">
-                    {DECISION_LABEL[decision.decision]}
-                  </strong>
-                </p>
-                <p>
-                  Reason: <code data-testid="reason">{decision.reason}</code>
-                </p>
-                <p className="muted">
-                  Age {decision.age} · evaluated{" "}
-                  <span data-testid="evaluated-at">{decision.evaluatedAt}</span>
-                </p>
-                <p>
-                  Lookup:{" "}
-                  <code data-testid="lookup-path">
-                    {decision.lookupPath.join(" → ")}
-                  </code>
-                </p>
-                <p>
-                  Matched rule:{" "}
-                  <code data-testid="matched-rule">
-                    {decision.matchedRule
-                      ? `${decision.matchedRule.jurisdiction} · ${decision.matchedRule.feature} · min age ${decision.matchedRule.minAge} · ${decision.matchedRule.ifUnder}`
-                      : "No matching rule"}
-                  </code>
-                </p>
-                {decision.reason === "parental_consent_pending" ? (
-                  <p data-testid="waiting">
-                    <strong>Waiting for parent</strong>
-                  </p>
-                ) : null}
-              </>
+              <DecisionCard
+                decision={decision}
+                preset={presetHint}
+                request={request}
+                canAskParent={actions.canAskParent}
+                onAskParent={() => void askParent()}
+                busy={busy}
+              />
             ) : (
               <p className="muted">
                 Check access to see the server&apos;s decision and evidence.
               </p>
             )}
           </div>
-
-          {actions.canAskParent ? (
-            <button type="button" onClick={() => void askParent()} disabled={busy}>
-              Ask a parent
-            </button>
-          ) : null}
 
           <p
             className="muted"
@@ -440,18 +495,43 @@ export default function ConsentGatePage({
         </section>
 
         <section className="panel" aria-labelledby="parent-heading">
-          <h2 id="parent-heading">Trusted parent</h2>
+          <div className="section-heading">
+            <span className="step" aria-hidden="true">2</span>
+            <div>
+              <div className="heading-line">
+                <h2 id="parent-heading">Parent decisions</h2>
+                <HelpTip id="parent-decisions" label="About parent decisions">
+                  Pending: waiting for a parent. Approved: allowed. Declined:
+                  blocked, and the parent can reverse the decision.
+                </HelpTip>
+              </div>
+              <p>A trusted parent view for this exercise.</p>
+            </div>
+          </div>
           {request ? (
             <>
               <p className="muted">
-                {request.subjectId} · {request.jurisdiction} · {request.feature}
+                {featureLabel(request.feature)} · {request.jurisdiction} ·{" "}
+                <code>{request.subjectId}</code>
               </p>
-              <p aria-live="polite">
+              <p className="request-status-line">
                 Status:{" "}
-                <strong data-testid="request-status">{request.status}</strong>
+                <span
+                  className={`status status-${request.status}`}
+                  data-testid="request-status"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {consentStatusLabel(request.status)}
+                </span>
+              </p>
+              <p className="muted">
+                Created {new Date(request.createdAt).toLocaleString()} · Updated{" "}
+                {new Date(request.updatedAt).toLocaleString()}
               </p>
               <div className="button-row">
                 <button
+                  className="approve"
                   type="button"
                   onClick={() => void setParentDecision("approved")}
                   disabled={busy || !actions.canApprove}
@@ -459,6 +539,7 @@ export default function ConsentGatePage({
                   Approve
                 </button>
                 <button
+                  className="decline"
                   type="button"
                   onClick={() => void setParentDecision("declined")}
                   disabled={busy || !actions.canDecline}
@@ -468,41 +549,86 @@ export default function ConsentGatePage({
               </div>
             </>
           ) : (
-            <p className="muted">No consent request for this subject and feature.</p>
+            <div className="empty-state">
+              <p>No consent request for this subject and feature.</p>
+              <span>
+                Check an underage feature, then choose &ldquo;Ask a parent&rdquo;.
+              </span>
+            </div>
           )}
+          {otherRequests.length > 0 ? (
+            <div className="other-requests" data-testid="other-requests">
+              <p className="muted">Other requests for this subject</p>
+              <ul>
+                {otherRequests.map((entry) => (
+                  <li key={entry.id}>
+                    <span>
+                      {featureLabel(entry.feature)} · {entry.jurisdiction}
+                    </span>
+                    <span className={`status status-${entry.status}`}>
+                      {consentStatusLabel(entry.status)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       </div>
 
       <section className="panel policy" aria-labelledby="policy-heading">
-        <h2 id="policy-heading">Policy reference</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Jurisdiction</th>
-              <th>Feature</th>
-              <th>Minimum age</th>
-              <th>If under</th>
-            </tr>
-          </thead>
-          <tbody>
-            {policy.rules.map((rule) => {
-              const matched =
-                decision?.matchedRule?.jurisdiction === rule.jurisdiction &&
-                decision.matchedRule.feature === rule.feature;
-              return (
-                <tr
-                  key={`${rule.jurisdiction}-${rule.feature}`}
-                  className={matched ? "matched" : undefined}
-                >
-                  <td>{rule.jurisdiction}</td>
-                  <td>{rule.feature}</td>
-                  <td>{rule.minAge}</td>
-                  <td>{rule.ifUnder}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="section-heading compact-heading">
+          <span className="step" aria-hidden="true">3</span>
+          <div>
+            <h2 id="policy-heading">Policy reference</h2>
+            <p>
+              The engine checks the most specific jurisdiction first: region,
+              country, then global <code>*</code> (any jurisdiction). File order
+              does not decide precedence; this table is grouped by specificity.
+            </p>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <caption className="sr-only">
+              Policy rules used by the decision engine
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Jurisdiction</th>
+                <th scope="col">Feature</th>
+                <th scope="col">Minimum age</th>
+                <th scope="col">If under</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policyRows.map((rule) => {
+                const matched =
+                  decision?.matchedRule?.jurisdiction === rule.jurisdiction &&
+                  decision.matchedRule.feature === rule.feature;
+                return (
+                  <tr
+                    key={`${rule.jurisdiction}-${rule.feature}`}
+                    className={matched ? "matched" : undefined}
+                  >
+                    <td>{rule.jurisdiction === "*" ? "Global (*)" : rule.jurisdiction}</td>
+                    <td>{featureLabel(rule.feature)}</td>
+                    <td>{rule.minAge}</td>
+                    <td className="capitalize">{humanizeCode(rule.ifUnder)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="policy-source">
+          Source of truth: <code>src/data/policy.json</code>
+        </p>
+        <p className="demo-storage-note">
+          Demo storage is in memory. Consent records may reset when the service
+          restarts or redeploys; every preset creates a fresh synthetic subject
+          and uses no personal data.
+        </p>
       </section>
     </main>
   );

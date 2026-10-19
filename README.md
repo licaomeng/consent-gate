@@ -4,13 +4,14 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** all three implementation milestones are delivered: the domain core, the services and `/api/v1` routes, and the single-page consent workflow. `npm run verify` runs 168 Vitest tests, a production build, and 14 Playwright journeys; coverage is 98.5% statements and 95.06% branches. The public deployment URL is pending.
+> **Current state:** all three implementation milestones are delivered: the domain core, the services and `/api/v1` routes, and the single-page consent workflow. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys; coverage is reported by `npm run test:coverage`. The public deployment URL is pending.
 
 ## At a glance
 
 - **Core path:** evaluate access → raise a request → parent acts → evaluate again.
 - **Safety boundary:** consent may satisfy a consent-eligible rule, but it never overrides a hard block.
 - **Source of truth:** the server validates and evaluates the supplied JSON policy; the browser displays the result and its evidence.
+- **Page guidance:** each demo case shows its expected outcome before selection; decisions use a four-layer card (outcome, status, evidence, demo check) with colour paired with text, and a concise live-region summary.
 - **Exercise cut line:** one Next.js deployment and an in-memory repository. Durable identity, storage, audit, and concurrency are documented but not claimed.
 
 ## Review path
@@ -38,9 +39,9 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Verify
 
 ```bash
-npm run test:run       # 168 Vitest tests
+npm run test:run       # 172 Vitest tests
 npm run build          # production build of the page and the three /api/v1 route files (four operations)
-npm run test:e2e       # 14 Playwright journeys (run npm run build first)
+npm run test:e2e       # 19 Playwright journeys (run npm run build first)
 npm run verify         # coverage -> build -> E2E, the same stages CI runs
 ```
 
@@ -82,9 +83,9 @@ In-memory consent resets after restart, redeployment, or service sleep.
 
 ## Submission check
 
-- [x] The complete child-to-parent journey works (14 Playwright journeys, including approve, decline, reversal, and the API error contract).
+- [x] The complete child-to-parent journey works (19 Playwright journeys, including approve, decline, reversal, the API error contract, and the UX/accessibility checks).
 - [x] Empty-suite allowances are removed and `npm run verify` passes.
 - [x] README capabilities match the delivered code.
-- [ ] The reviewed commit is the deployed commit (pending push and Render deployment).
+- [ ] The reviewed commit is the deployed commit (`d013796` is pushed; Render deployment pending).
 - [x] `DECISIONS.md` and `AI-USE.md` contain final, factual information.
 - [x] Known limitations and unfinished work are explicit.

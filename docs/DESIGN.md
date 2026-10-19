@@ -321,6 +321,22 @@ The parent panel follows the current request:
 
 During a request, the relevant action is disabled. Recoverable errors preserve the scenario and allow retry. Expected preset metadata never drives the decision, and manual input changes clear both the previous result and the preset expectation.
 
+### Accessibility
+
+- Use native controls with programmatic labels; every input and select has a visible label.
+- Demo cases are buttons; the selected case exposes `aria-pressed`, and its expected outcome is visible text, never colour alone.
+- A concise, visually hidden live region announces the decision summary; progress uses `role="status"`, and the parent status is polite-live.
+- Colour is supplementary: every decision and status also carries text and its stable reason or status code.
+- Keyboard operation and a visible focus ring are required; the active action and scenario inputs are disabled while a request is in flight.
+- Errors use `role="alert"`; the policy table has a caption and column headers.
+- On narrow screens the child panel precedes the parent panel.
+- Decision cards use four layers with decreasing emphasis: outcome headline, status/next action, evidence list, and a demo check.
+- Tag and status text meets WCAG AA contrast (4.5:1) and is at least 0.72rem; colour is never the only signal.
+- The parent panel lists other consent scopes for the same subject, and **New subject** resets the synthetic identity without touching the server.
+- The page title is two deliberate lines; the second sentence carries the accent colour.
+- Key controls expose an inline help button: a focusable trigger with `aria-describedby`, a `role="tooltip"` panel shown on hover and focus, and the same copy available to assistive technology.
+
+
 ### Demo cases
 
 | Preset | Expected | Evidence |

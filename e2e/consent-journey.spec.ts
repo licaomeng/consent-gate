@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("runs the full consent loop", async ({ page }) => {
-  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("decision")).toHaveText("Needs parental consent");
@@ -13,67 +13,149 @@ test("runs the full consent loop", async ({ page }) => {
   await expect(page.getByTestId("evaluated-at")).toHaveText("2026-10-19");
 
   await page.getByRole("button", { name: "Ask a parent" }).click();
-  await expect(page.getByTestId("request-status")).toHaveText("pending");
+  await expect(page.getByTestId("request-status")).toHaveText("Pending");
+  await expect(page.getByTestId("request-status")).toHaveClass(/status-pending/);
+  await expect(page.getByTestId("request-status")).toHaveAttribute("aria-live", "polite");
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_pending");
   await expect(page.getByTestId("waiting")).toHaveText("Waiting for parent");
 
   await page.getByRole("button", { name: "Approve" }).click();
-  await expect(page.getByTestId("request-status")).toHaveText("approved");
+  await expect(page.getByTestId("request-status")).toHaveText("Approved");
+  await expect(page.getByTestId("request-status")).toHaveClass(/status-approved/);
   await expect(page.getByTestId("decision")).toHaveText("Allowed");
+  await expect(page.getByTestId("decision-card")).toHaveClass(/decision-allowed/);
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_approved");
 
   await page.getByRole("button", { name: "Decline" }).click();
-  await expect(page.getByTestId("request-status")).toHaveText("declined");
+  await expect(page.getByTestId("request-status")).toHaveText("Declined");
+  await expect(page.getByTestId("request-status")).toHaveClass(/status-declined/);
   await expect(page.getByTestId("decision")).toHaveText("Blocked");
+  await expect(page.getByTestId("decision-card")).toHaveClass(/decision-blocked/);
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_declined");
 });
 
 test("a hard block never offers Ask a parent", async ({ page }) => {
-  await page.getByRole("button", { name: "British child chat" }).click();
+  await page.getByTestId("demo-british-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("decision")).toHaveText("Blocked");
+  await expect(page.getByTestId("decision-card")).toHaveClass(/decision-blocked/);
   await expect(page.getByTestId("reason")).toHaveText("under_minimum_age");
   await expect(page.getByRole("button", { name: "Ask a parent" })).toHaveCount(0);
 });
 
 test("missing coverage is distinct from a hard block", async ({ page }) => {
-  await page.getByRole("button", { name: "Missing coverage" }).click();
+  await page.getByTestId("demo-missing-coverage").click();
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("decision")).toHaveText("Blocked");
+  await expect(page.getByTestId("decision-card")).toHaveClass(/decision-blocked/);
   await expect(page.getByTestId("reason")).toHaveText("no_matching_policy");
   await expect(page.getByTestId("matched-rule")).toHaveText("No matching rule");
 });
 
 test("shows subdivision precedence evidence", async ({ page }) => {
-  await page.getByRole("button", { name: "California teen chat" }).click();
+  await page.getByTestId("demo-california-teen-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("decision")).toHaveText("Needs parental consent");
+  await expect(page.getByTestId("decision-card")).toHaveClass(/decision-parental_consent/);
   await expect(page.getByTestId("matched-rule")).toContainText("US-CA");
   await expect(page.getByTestId("lookup-path")).toContainText("US-CA");
 });
 
-test("shows the preset's expected outcome and purpose before evaluation", async ({ page }) => {
-  await page.getByRole("button", { name: "German child chat" }).click();
-
-  await expect(page.getByTestId("preset-hint")).toContainText("Needs parental consent");
-  await expect(page.getByTestId("preset-hint")).toContainText("Full consent and reversal loop.");
+test("shows each demo case's expected outcome before evaluation", async ({ page }) => {
+  await expect(page.getByTestId("expected-us-adult-purchase")).toHaveText("Allowed");
+  await expect(page.getByTestId("expected-german-child-chat")).toHaveText(
+    "Parental consent",
+  );
+  await expect(page.getByTestId("expected-british-child-chat")).toHaveText("Blocked");
+  await expect(page.getByTestId("demo-german-child-chat")).toContainText(
+    "Full consent and reversal loop.",
+  );
   await expect(page.getByTestId("decision")).toHaveCount(0);
 });
 
-test("matches a pending request even when the typed jurisdiction is lowercase", async ({ page }) => {
-  await page.getByRole("button", { name: "German child chat" }).click();
+test("marks the selected demo case and compares expected with actual", async ({ page }) => {
+  const card = page.getByTestId("demo-german-child-chat");
+  await card.click();
+  await expect(card).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: "Check access" }).click();
+
+  await expect(page.getByTestId("decision-card")).toHaveClass(/decision-parental_consent/);
+  await expect(page.getByTestId("expected-actual")).toContainText(
+    "Expected Needs parental consent",
+  );
+  await expect(page.getByTestId("expected-actual")).toContainText(
+    "Actual Needs parental consent",
+  );
+  await expect(page.getByTestId("expected-actual")).toContainText(
+    "Parental consent required",
+  );
+});
+
+test("explains key controls with hover and focus help", async ({ page }) => {
+  const help = page.getByTestId("help-new-subject");
+  const tooltip = page.getByTestId("tooltip-new-subject");
+
+  await expect(tooltip).toHaveCSS("opacity", "0");
+  await help.hover();
+  await expect(tooltip).toHaveCSS("opacity", "1");
+  await help.focus();
+  await expect(tooltip).toHaveCSS("opacity", "1");
+  await expect(help).toHaveAttribute("aria-describedby", "new-subject-tooltip");
+});
+
+test("creates a new synthetic subject on demand", async ({ page }) => {
+  const subject = page.locator(".subject code");
+  const before = await subject.textContent();
+
+  await page.getByTestId("new-subject").click();
+
+  await expect(subject).not.toHaveText(before ?? "");
+});
+
+test("lists other consent scopes for the same subject", async ({ page }) => {
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
   await page.getByRole("button", { name: "Ask a parent" }).click();
-  await expect(page.getByTestId("request-status")).toHaveText("pending");
+  await expect(page.getByTestId("request-status")).toHaveText("Pending");
+
+  // Keep the subject, change the scope: this must not hide the first request.
+  await page.getByLabel("Jurisdiction").fill("US");
+  await page.getByLabel("Feature", { exact: true }).selectOption("purchases");
+  await page.getByRole("button", { name: "Check access" }).click();
+  await page.getByRole("button", { name: "Ask a parent" }).click();
+  await expect(page.getByTestId("request-status")).toHaveText("Pending");
+
+  await expect(page.getByTestId("other-requests")).toContainText("Chat");
+  await expect(page.getByTestId("other-requests")).toContainText("Pending");
+});
+
+test("exposes live regions and labelled controls", async ({ page }) => {
+  await expect(page.getByTestId("decision-summary")).toHaveAttribute("role", "status");
+  await expect(page.getByTestId("decision-summary")).toHaveAttribute(
+    "aria-live",
+    "polite",
+  );
+  await expect(page.getByTestId("progress")).toHaveAttribute("role", "status");
+  await expect(page.getByLabel("Date of birth")).toBeVisible();
+  await expect(page.getByLabel("Jurisdiction")).toBeVisible();
+  await expect(page.getByLabel("Feature", { exact: true })).toBeVisible();
+});
+
+test("matches a pending request even when the typed jurisdiction is lowercase", async ({ page }) => {
+  await page.getByTestId("demo-german-child-chat").click();
+  await page.getByRole("button", { name: "Check access" }).click();
+  await page.getByRole("button", { name: "Ask a parent" }).click();
+  await expect(page.getByTestId("request-status")).toHaveText("Pending");
 
   await page.getByLabel("Jurisdiction").fill("de");
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_pending");
-  await expect(page.getByTestId("request-status")).toHaveText("pending");
+  await expect(page.getByTestId("request-status")).toHaveText("Pending");
   await expect(page.getByRole("button", { name: "Ask a parent" })).toHaveCount(0);
 });
 
@@ -88,7 +170,7 @@ test("does not treat an unreadable consent state as no request", async ({ page }
     }),
   );
 
-  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("error")).toContainText("Consent state could not be read");
@@ -112,12 +194,12 @@ test("clears the old decision when the post-action refresh fails", async ({ page
     await route.continue();
   });
 
-  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
   await page.getByRole("button", { name: "Ask a parent" }).click();
   await page.getByRole("button", { name: "Approve" }).click();
 
-  await expect(page.getByTestId("request-status")).toHaveText("approved");
+  await expect(page.getByTestId("request-status")).toHaveText("Approved");
   await expect(page.getByTestId("decision")).toHaveCount(0);
   await expect(page.getByTestId("error")).toBeVisible();
 });
@@ -128,7 +210,7 @@ test("locks the scenario inputs while a parent action is in flight", async ({ pa
     await route.continue();
   });
 
-  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
   await page.getByRole("button", { name: "Ask a parent" }).click();
   await page.getByRole("button", { name: "Approve" }).click();
@@ -142,7 +224,7 @@ test("announces progress while a check is in flight", async ({ page }) => {
     await route.continue();
   });
 
-  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
 
   await expect(page.getByTestId("progress")).toHaveText("Checking access…");
@@ -189,7 +271,7 @@ test.describe("API error contract", () => {
 });
 
 test("clears the previous decision when the input changes", async ({ page }) => {
-  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByTestId("demo-german-child-chat").click();
   await page.getByRole("button", { name: "Check access" }).click();
   await expect(page.getByTestId("decision")).toHaveText("Needs parental consent");
 
