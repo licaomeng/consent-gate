@@ -1,4 +1,4 @@
-# AI Use — Detailed Log
+# AI Use: Detailed Log
 
 Supplementary evidence for [`AI-USE.md`](../AI-USE.md). The submission is AI-USE.md; this file keeps the full per-milestone log, line-level links, and verification table.
 

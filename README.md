@@ -27,7 +27,7 @@ All routes are under `/api/v1`.
 | `GET` | `/api/v1/consent-requests?subjectId=...` | List requests for a subject |
 | `PATCH` | `/api/v1/consent-requests/:id` | Approve, decline, or reverse |
 
-`POST /api/v1/decisions` takes `subjectId`, `dateOfBirth`, `jurisdiction`, and `feature`, and returns the decision, reason, age, evaluation date, lookup path, and matched rule. The evaluation date is server-owned; sending one is a `400`. The brief's three inputs determine what to evaluate; consent must also be tied to a subject, so the demo adds a synthetic `subjectId`. Production derives it from the authenticated profile. Request bodies are capped at 8 KiB and return `413 payload_too_large` above that.
+`POST /api/v1/decisions` takes `subjectId`, `dateOfBirth`, `jurisdiction`, and `feature`, and returns the decision, reason, age, evaluation date, lookup path, and matched rule. The evaluation date is server-owned; sending one is a `400`. The brief's three inputs determine what to evaluate; consent must also be tied to a subject, so the demo adds a synthetic `subjectId`. Production derives it from the authenticated profile. Request bodies are capped at 8 KiB and return `413 payload_too_large` above that. Errors use `400 validation_error`, `404 request_not_found`, `409 consent_not_required`, `413 payload_too_large`, `503 dependency_unavailable`, and `500 internal_error`.
 
 ## Review path
 
@@ -66,14 +66,14 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). For the production build, run `npm run build && npm start`.
+Open [http://localhost:3000](http://localhost:3000). No environment variables or credentials are required. For the production build, run `npm run build && npm start`.
 
 ## Verify
 
 ```bash
 npm run test:run       # 180 Vitest tests
 npm run build          # production build of the page and the three /api/v1 route files (four operations)
-npx playwright install chromium   # once, before the browser journeys
+npx playwright install chromium   # once, before the journey or verify
 npm run test:e2e       # 21 Playwright journeys (run npm run build first)
 npm run verify         # coverage -> build -> E2E, the same stages CI runs
 ```
@@ -94,7 +94,7 @@ bash tools/mutation-check-m5.sh  # M5 tooltip, live-region, and id guards (rebui
 
 ## Deployment
 
-**Live application:** https://consent-gate.onrender.com/ on Render. Its in-memory state is shared by visitors to the same instance.
+**Live application:** https://consent-gate.onrender.com/ on Render. Its in-memory state is shared by visitors to the same instance. The free tier may sleep, so the first request can take a few seconds.
 
 GitHub Actions verifies a pushed revision before asking Render to deploy that commit. Render uses `/` as its service health check. Auto-deploy is disabled so the same push is not deployed twice.
 
@@ -107,6 +107,7 @@ Required GitHub configuration:
 ## Known limitations
 
 - State is in memory: it resets on restart, redeploy, or service sleep, and is not shared across instances.
-- Authentication and guardian verification are out of scope; the parent panel uses a trusted demo identity.
+- Authentication, guardian verification, and age assurance are out of scope; the parent panel uses a trusted demo identity, and the date of birth is caller-supplied and unverified.
 - There is no immutable audit history, policy administration, expiry, or re-consent flow.
+- There is no rate limiting or abuse control beyond the 8 KiB body cap and the 128-character `subjectId` cap.
 - The policy is a file; changing it requires a redeploy and invalid policy stops startup.
