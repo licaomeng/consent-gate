@@ -45,12 +45,21 @@ Long-running commands, agent runs, and large reads run in the background so the 
 
 ## Milestones
 
-Work proceeds one milestone at a time, and each milestone ends in human review:
+Work proceeds one milestone at a time, and each milestone ends in human review. The first four were planned from the brief; M5 is a later user-review round with the same obligations:
+
+```mermaid
+flowchart LR
+  M1[M1 Domain core] --> M2[M2 Services and HTTP]
+  M2 --> M3[M3 Page and E2E]
+  M3 --> M4[M4 Verification and handoff]
+  M4 --> M5[M5 UX, accessibility, and review fixes]
+```
 
 1. **M1 Domain core** — shared types, policy validation and precedence, calendar age, input normalization, decision evaluation, consent state machine, and their unit tests.
 2. **M2 Services and HTTP** — repository, decision and consent services, the four versioned routes, and API tests.
 3. **M3 Page and E2E** — demonstration page, presets, action matrix, demo contract tests, and the Playwright journey.
 4. **M4 Verification and handoff** — remove empty-suite allowances, run the full verification ladder, reconcile documentation with delivered behavior, and verify the deployed revision.
+5. **M5 Front-end UX and accessibility** — a user-review round: expected-outcome tags before selection, semantic colours, human-readable labels, expected-versus-actual evidence, the four-layer decision card, accessible live regions and labels, and the follow-up hardening from the staged-diff review (full random subject ids with display-only shortening, one live region with atomic status/decision commits, dismissible tooltips, generated-file hygiene, and UTC timestamps).
 
 ## Review protocol
 

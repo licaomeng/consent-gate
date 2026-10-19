@@ -4,7 +4,7 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** all three implementation milestones are delivered: the domain core, the services and `/api/v1` routes, and the single-page consent workflow. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys; coverage is reported by `npm run test:coverage`. The public deployment URL is pending.
+> **Current state:** the planned implementation milestones are delivered (the domain core, the services and `/api/v1` routes, the single-page consent workflow, and verification), followed by one user-review round (M5) for UX and accessibility, including a follow-up pass that hardened ids, live regions, tooltips, and timestamps. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys; coverage is reported by `npm run test:coverage`. The public deployment URL is pending.
 
 ## At a glance
 

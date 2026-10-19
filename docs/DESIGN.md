@@ -334,7 +334,7 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 - Tag and status text meets WCAG AA contrast (4.5:1) and is at least 0.72rem; colour is never the only signal.
 - The parent panel lists other consent scopes for the same subject, and **New subject** resets the synthetic identity without touching the server.
 - The page title is two deliberate lines; the second sentence carries the accent colour.
-- Key controls expose an inline help button: a focusable trigger with `aria-describedby` and a `role="tooltip"` panel. It opens on hover or focus, toggles on click, and closes on Escape or an outside press, so it is usable on touch and satisfies WCAG 1.4.13.
+- Key controls expose an inline help button placed immediately beside the control it explains: a focusable trigger with `aria-describedby` and a `role="tooltip"` panel. It opens on hover or focus, toggles on click, and closes on Escape or an outside press, so it is usable on touch and satisfies WCAG 1.4.13.
 - Request timestamps render as UTC inside `<time dateTime>` elements rather than in the viewer's locale.
 
 
