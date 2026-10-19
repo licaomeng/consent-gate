@@ -1,6 +1,6 @@
 # Consent Gate Design
 
-This document is the proposed implementation contract for the take-home. It describes the target behavior, not completed work. The original prompt is preserved in [`EXERCISE_BRIEF.md`](EXERCISE_BRIEF.md); choices left open by the prompt are recorded in [`../DECISIONS.md`](../DECISIONS.md). The README remains the source of truth for what has actually been verified.
+This document is the implementation contract for the take-home. It describes the delivered behavior; the original prompt is preserved in [`EXERCISE_BRIEF.md`](EXERCISE_BRIEF.md) and choices left open by the prompt are recorded in [`../DECISIONS.md`](../DECISIONS.md). The README records the verified evidence and the delivered capabilities.
 
 ## Design in one minute
 
@@ -332,11 +332,11 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 | US teen purchase | `parental_consent` | Feature-specific threshold |
 | Missing coverage | `blocked` | Distinct `no_matching_policy` reason |
 
-Selecting a preset generates a fresh synthetic subject, so an earlier decision cannot contaminate the walkthrough. Expected metadata is presentation-only; a contract test evaluates every preset against the real engine.
+Selecting a preset generates a fresh synthetic subject, so an earlier decision cannot contaminate the walkthrough. Expected metadata is presentation-only; a contract test evaluates every preset against the real engine. Presets carry an age rather than a fixed date of birth: the page is rendered per request with the server's evaluation date and derives each DOB from it, so the advertised outcome does not drift as the calendar advances.
 
 ### Frontend architecture
 
-The server component renders the page shell and display-safe policy. React owns only interactive workflow state; API routes validate input and call application services. The browser never runs the policy matcher.
+The server component renders the page shell, the display-safe policy, and the current evaluation date. React owns only interactive workflow state; API routes validate input and call application services. The browser never runs the policy matcher.
 
 | Choice | Responsibility and reason |
 |---|---|
@@ -435,7 +435,7 @@ The in-memory exercise repository has no external availability failure, but the 
 
 ### Requirement traceability
 
-Before submission, each requested deliverable must have visible evidence. Until the implementation exists, this table is a target rather than a completion claim.
+Before submission, each requested deliverable must have visible evidence. This table maps each requirement to the tests and documents that provide that evidence.
 
 | Brief requirement | Evidence required at handoff |
 |---|---|

@@ -2,7 +2,7 @@
 
 The brief leaves several behaviors open. This file records the choices that materially affect the implementation. Detailed contracts live in [`docs/DESIGN.md`](docs/DESIGN.md); production extensions live in [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md).
 
-These are proposed implementation decisions. The README records what has actually been delivered and verified.
+These decisions are implemented as described. The README records the verified evidence and the delivered capabilities.
 
 ## At a glance
 
@@ -63,7 +63,7 @@ PostgreSQL is the production direction because consent requires uniqueness, tran
 
 REST keeps the small command-oriented workflow explicit. `POST /decisions` carries structured input without placing DOB in a URL. GraphQL would add schema and resolver machinery without solving a query-shape problem in this exercise.
 
-Policy decisions remain on the server. The page will receive a display-safe policy model plus the server's `lookupPath` and `matchedRule`; it will not reconstruct precedence. Demo presets will generate fresh subjects so prior consent cannot change the advertised starting result.
+Policy decisions remain on the server. The page receives a display-safe policy model plus the server's `lookupPath` and `matchedRule`; it does not reconstruct precedence. Demo presets generate fresh subjects so prior consent cannot change the advertised starting result. Presets carry an age rather than a fixed date of birth; the page is rendered per request with the server's evaluation date and derives each DOB from it, so the advertised expectation stays aligned with the engine as the calendar advances.
 
 ## Verification
 

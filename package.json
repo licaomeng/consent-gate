@@ -9,9 +9,9 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest",
-    "test:run": "vitest run --passWithNoTests",
-    "test:coverage": "vitest run --coverage --passWithNoTests",
-    "test:e2e": "playwright test --pass-with-no-tests",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "verify": "npm run test:coverage && npm run build && npm run test:e2e"
   },
   "dependencies": {

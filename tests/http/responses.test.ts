@@ -19,6 +19,48 @@ describe("errorResponse", () => {
     expect(response.status).toBe(status);
   });
 
+  it("recognises a DomainError from another bundle by its stable shape", async () => {
+    const response = errorResponse({
+      name: "DomainError",
+      code: "validation_error",
+      message: "bad input",
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.code).toBe("validation_error");
+  });
+
+  it("recognises a RepositoryError from another bundle by its stable shape", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = errorResponse({
+      name: "RepositoryError",
+      message: "storage unavailable",
+    });
+
+    expect(response.status).toBe(503);
+  });
+
+  it("does not classify a primitive or null as a domain error", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(errorResponse("boom").status).toBe(500);
+    expect(errorResponse(null).status).toBe(500);
+  });
+
+  it("does not classify an unknown error code as a domain error", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = errorResponse({
+      name: "DomainError",
+      code: "not_a_real_code",
+      message: "forged",
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("does not log expected domain errors", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 

@@ -4,7 +4,7 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** the repository contains the reviewed design, the M1 domain core, the M2 services and HTTP routes, and the M3 demonstration page (164 Vitest tests, 11 Playwright journeys). Final verification and submission reconciliation remain. Replace this notice with verified capabilities before submission.
+> **Current state:** all three implementation milestones are delivered: the domain core, the services and `/api/v1` routes, and the single-page consent workflow. `npm run verify` runs 168 Vitest tests, a production build, and 11 Playwright journeys; coverage is 98.5% statements and 95.06% branches. The public deployment URL is pending.
 
 ## At a glance
 
@@ -38,13 +38,24 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Verify
 
 ```bash
-npm run test:run
-npm run build
-npm run test:e2e
-npm run verify
+npm run test:run       # 168 Vitest tests
+npm run build          # production build of the page and the three /api/v1 route files (four operations)
+npm run test:e2e       # 11 Playwright journeys (run npm run build first)
+npm run verify         # coverage -> build -> E2E, the same stages CI runs
 ```
 
-The starter temporarily permits empty suites. Before submission, those allowances must be removed and `npm run verify` must run non-empty Vitest suites, a production build, and Playwright E2E tests.
+No suite may pass vacuously: the starter's empty-suite allowances were removed in the final pass, so a missing or empty suite fails the command.
+
+### Developer checks
+
+These are reproducible supporting checks, not part of `npm run verify`:
+
+```bash
+bash tools/http-smoke.sh         # real HTTP smoke on port 3200 (run npm run build first)
+bash tools/mutation-check-m1.sh  # domain safety-rule mutations
+bash tools/mutation-check-m2.sh  # service/HTTP mutations
+bash tools/mutation-check-m3.sh  # UI mutations (rebuilds and runs Playwright)
+```
 
 ## Deployment
 
@@ -58,13 +69,22 @@ Required GitHub configuration:
 
 In-memory consent resets after restart, redeployment, or service sleep.
 
-**Live application:** add after the deployed revision has been verified.
+**Live application:** pending deployment of the reviewed commit.
+
+## Known limitations
+
+- State is in memory: it resets on restart, redeploy, or service sleep, and is not shared across instances.
+- Authentication and guardian verification are out of scope; the parent panel uses a trusted demo identity.
+- There is no immutable audit history, policy administration, expiry, or re-consent flow.
+- The policy is one JSON file shipped with the application; invalid or duplicate rules fail startup.
+- Demo presets derive their date of birth from the server's evaluation date, so the advertised outcome does not drift as the calendar advances.
+- The public deployment URL is not yet verified.
 
 ## Submission check
 
-- [ ] The complete child-to-parent journey works.
-- [ ] Empty-suite allowances are removed and `npm run verify` passes.
-- [ ] README capabilities match the delivered code.
-- [ ] The reviewed commit is the deployed commit.
-- [ ] `DECISIONS.md` and `AI-USE.md` contain final, factual information.
-- [ ] Known limitations and unfinished work are explicit.
+- [x] The complete child-to-parent journey works (11 Playwright journeys, including approve, decline, and reversal).
+- [x] Empty-suite allowances are removed and `npm run verify` passes.
+- [x] README capabilities match the delivered code.
+- [ ] The reviewed commit is the deployed commit (pending push and Render deployment).
+- [x] `DECISIONS.md` and `AI-USE.md` contain final, factual information.
+- [x] Known limitations and unfinished work are explicit.
