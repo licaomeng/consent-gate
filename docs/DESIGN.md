@@ -246,6 +246,8 @@ Errors use `{ "error": { "code": string, "message": string } }`. Reason codes ex
 
 `no_matching_policy` is a successful, fail-closed decision, not an HTTP error.
 
+Error classification is structural: the stable `name` plus the closed set of domain codes, not `instanceof`. The route handler and the services may be bundled separately, so the same error class can exist as two different constructors.
+
 ## 4. Product contract
 
 The page places the child/product and trusted-parent experiences together so a reviewer can observe the whole state transition. It does not suggest that a production child and parent share one authenticated screen.

@@ -148,6 +148,46 @@ test("announces progress while a check is in flight", async ({ page }) => {
   await expect(page.getByTestId("progress")).toHaveText("Checking access…");
 });
 
+test.describe("API error contract", () => {
+  test("returns 409 for a hard-block consent request", async ({ request }) => {
+    const response = await request.post("/api/v1/consent-requests", {
+      data: {
+        subjectId: "http-gb",
+        dateOfBirth: "2015-03-01",
+        jurisdiction: "GB",
+        feature: "chat",
+      },
+    });
+
+    expect(response.status()).toBe(409);
+    expect((await response.json()).error.code).toBe("consent_not_required");
+  });
+
+  test("returns 400 for a client-supplied evaluation date", async ({ request }) => {
+    const response = await request.post("/api/v1/decisions", {
+      data: {
+        subjectId: "http-child",
+        dateOfBirth: "2015-03-01",
+        jurisdiction: "DE",
+        feature: "chat",
+        evaluationDate: "2040-01-01",
+      },
+    });
+
+    expect(response.status()).toBe(400);
+    expect((await response.json()).error.code).toBe("validation_error");
+  });
+
+  test("returns 404 for an unknown consent request id", async ({ request }) => {
+    const response = await request.patch("/api/v1/consent-requests/missing", {
+      data: { status: "approved" },
+    });
+
+    expect(response.status()).toBe(404);
+    expect((await response.json()).error.code).toBe("request_not_found");
+  });
+});
+
 test("clears the previous decision when the input changes", async ({ page }) => {
   await page.getByRole("button", { name: "German child chat" }).click();
   await page.getByRole("button", { name: "Check access" }).click();

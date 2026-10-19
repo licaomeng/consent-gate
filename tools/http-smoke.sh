@@ -5,6 +5,14 @@ cd "$(dirname "$0")/.." || exit 1
 PORT=3200
 export CONSENT_GATE_ALLOW_TEST_CLOCK=1
 export CONSENT_GATE_EVALUATION_DATE=2026-10-19
+
+# Never test against a foreign process: if the port is busy, the new server
+# dies and curl would happily talk to the old one.
+if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "HTTP SMOKE: port $PORT is already in use"
+  exit 1
+fi
+
 ./node_modules/.bin/next start -p "$PORT" >/tmp/cg-http-server.log 2>&1 &
 SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null' EXIT
@@ -15,9 +23,13 @@ for _ in $(seq 1 60); do
   if curl -sf -o /dev/null "$BASE/"; then READY=1; break; fi
   sleep 0.5
 done
-if [ "$READY" -ne 1 ]; then
-  echo "HTTP SMOKE: server did not start"
+if [ "$READY" -ne 1 ] || ! kill -0 "$SERVER_PID" 2>/dev/null; then
+  echo "HTTP SMOKE: server did not start (or died)"
   tail -20 /tmp/cg-http-server.log
+  exit 1
+fi
+if grep -q "EADDRINUSE" /tmp/cg-http-server.log; then
+  echo "HTTP SMOKE: address already in use"
   exit 1
 fi
 
