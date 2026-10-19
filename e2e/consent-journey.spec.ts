@@ -10,6 +10,7 @@ test("runs the full consent loop", async ({ page }) => {
 
   await expect(page.getByTestId("decision")).toHaveText("Needs parental consent");
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_required");
+  await expect(page.getByTestId("evaluated-at")).toHaveText("2026-10-19");
 
   await page.getByRole("button", { name: "Ask a parent" }).click();
   await expect(page.getByTestId("request-status")).toHaveText("pending");
@@ -121,6 +122,20 @@ test("clears the old decision when the post-action refresh fails", async ({ page
   await expect(page.getByTestId("error")).toBeVisible();
 });
 
+test("locks the scenario inputs while a parent action is in flight", async ({ page }) => {
+  await page.route("**/api/v1/consent-requests/*", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await route.continue();
+  });
+
+  await page.getByRole("button", { name: "German child chat" }).click();
+  await page.getByRole("button", { name: "Check access" }).click();
+  await page.getByRole("button", { name: "Ask a parent" }).click();
+  await page.getByRole("button", { name: "Approve" }).click();
+
+  await expect(page.getByLabel("Jurisdiction")).toBeDisabled();
+});
+
 test("announces progress while a check is in flight", async ({ page }) => {
   await page.route("**/api/v1/decisions", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 800));
@@ -133,24 +148,12 @@ test("announces progress while a check is in flight", async ({ page }) => {
   await expect(page.getByTestId("progress")).toHaveText("Checking access…");
 });
 
-test("ignores a stale decision response after the input changes", async ({ page }) => {
-  let decisionCalls = 0;
-  await page.route("**/api/v1/decisions", async (route) => {
-    decisionCalls += 1;
-    if (decisionCalls === 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1_200));
-    }
-    await route.continue();
-  });
-
+test("clears the previous decision when the input changes", async ({ page }) => {
   await page.getByRole("button", { name: "German child chat" }).click();
-  const pendingClick = page.getByRole("button", { name: "Check access" }).click();
-  await page.waitForTimeout(200);
+  await page.getByRole("button", { name: "Check access" }).click();
+  await expect(page.getByTestId("decision")).toHaveText("Needs parental consent");
 
-  // Invalidate the in-flight response by changing the scenario.
   await page.getByLabel("Jurisdiction").fill("GB");
-  await pendingClick;
 
-  await page.waitForTimeout(1_500);
   await expect(page.getByTestId("decision")).toHaveCount(0);
 });

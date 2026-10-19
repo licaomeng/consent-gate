@@ -4,7 +4,7 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** the repository contains the reviewed design, the M1 domain core, the M2 services and HTTP routes, and the M3 demonstration page (139 Vitest tests, 10 Playwright journeys). Final verification and submission reconciliation remain. Replace this notice with verified capabilities before submission.
+> **Current state:** the repository contains the reviewed design, the M1 domain core, the M2 services and HTTP routes, and the M3 demonstration page (164 Vitest tests, 11 Playwright journeys). Final verification and submission reconciliation remain. Replace this notice with verified capabilities before submission.
 
 ## At a glance
 

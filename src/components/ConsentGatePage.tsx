@@ -8,6 +8,7 @@ import {
   type UiPhase,
 } from "@/application/workflow";
 import {
+  dateOfBirthForAge,
   materializeDemoScenario,
   type DemoScenario,
 } from "@/demo/scenarios";
@@ -73,13 +74,15 @@ async function readBody(response: Response): Promise<unknown> {
 export default function ConsentGatePage({
   policy,
   presets,
+  evaluationDate,
 }: {
   policy: Policy;
   presets: readonly DemoScenario[];
+  evaluationDate: string;
 }) {
   const [draft, setDraft] = useState<Draft>({
     subjectId: "",
-    dateOfBirth: "2015-03-01",
+    dateOfBirth: dateOfBirthForAge(evaluationDate, 11),
     jurisdiction: "DE",
     feature: "chat",
   });
@@ -89,6 +92,9 @@ export default function ConsentGatePage({
   const [phase, setPhase] = useState<UiPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [presetHint, setPresetHint] = useState<DemoScenario | null>(null);
+  // The UI serializes operations (busy disables actions and inputs). Token
+  // checks remain as defence in depth against a future overlapping-request
+  // change; they are not reachable through the current controls.
   const tokenRef = useRef(0);
 
   // A random subject id is generated after mount, not during render, so the
@@ -113,6 +119,9 @@ export default function ConsentGatePage({
   }
 
   function updateDraft(patch: Partial<Draft>): void {
+    // Editing during an in-flight write would drop the response after the
+    // server may already have committed it. The inputs are disabled too.
+    if (busy) return;
     invalidateResults();
     setDraft((current) => ({ ...current, ...patch }));
   }
@@ -120,7 +129,7 @@ export default function ConsentGatePage({
   function selectPreset(preset: DemoScenario): void {
     invalidateResults();
     setPresetHint(preset);
-    setDraft(materializeDemoScenario(preset, newSubjectId()));
+    setDraft(materializeDemoScenario(preset, newSubjectId(), evaluationDate));
   }
 
   function begin(nextPhase: Exclude<UiPhase, "idle">): number {
@@ -335,6 +344,7 @@ export default function ConsentGatePage({
               id="date-of-birth"
               type="date"
               value={draft.dateOfBirth}
+              disabled={busy}
               onChange={(event) => updateDraft({ dateOfBirth: event.target.value })}
             />
 
@@ -342,6 +352,7 @@ export default function ConsentGatePage({
             <input
               id="jurisdiction"
               value={draft.jurisdiction}
+              disabled={busy}
               onChange={(event) => updateDraft({ jurisdiction: event.target.value })}
             />
 
@@ -349,6 +360,7 @@ export default function ConsentGatePage({
             <select
               id="feature"
               value={draft.feature}
+              disabled={busy}
               onChange={(event) => updateDraft({ feature: event.target.value })}
             >
               {policy.features.map((feature) => (
@@ -381,7 +393,8 @@ export default function ConsentGatePage({
                   Reason: <code data-testid="reason">{decision.reason}</code>
                 </p>
                 <p className="muted">
-                  Age {decision.age} · evaluated {decision.evaluatedAt}
+                  Age {decision.age} · evaluated{" "}
+                  <span data-testid="evaluated-at">{decision.evaluatedAt}</span>
                 </p>
                 <p>
                   Lookup:{" "}

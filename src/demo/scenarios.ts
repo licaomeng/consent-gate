@@ -3,7 +3,7 @@ import type { Decision, DecisionReason, Scenario } from "@/domain/types";
 export type DemoScenario = {
   id: string;
   label: string;
-  dateOfBirth: string;
+  ageYears: number;
   jurisdiction: string;
   feature: string;
   purpose: string;
@@ -14,14 +14,15 @@ export type DemoScenario = {
 };
 
 /**
- * Presentation-only metadata. A contract test evaluates every preset against
- * the real engine, so these expectations cannot drift silently.
+ * Presentation-only metadata. The date of birth is derived from the server's
+ * evaluation date, so the advertised expectation cannot drift as the calendar
+ * advances. A contract test checks every preset on several future dates.
  */
 export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "us-adult-purchase",
     label: "US adult purchase",
-    dateOfBirth: "1990-06-15",
+    ageYears: 36,
     jurisdiction: "US",
     feature: "purchases",
     purpose: "Adult access is allowed by the age threshold.",
@@ -30,7 +31,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "german-child-chat",
     label: "German child chat",
-    dateOfBirth: "2015-03-01",
+    ageYears: 11,
     jurisdiction: "DE",
     feature: "chat",
     purpose: "Full consent and reversal loop.",
@@ -39,7 +40,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "british-child-chat",
     label: "British child chat",
-    dateOfBirth: "2015-03-01",
+    ageYears: 11,
     jurisdiction: "GB",
     feature: "chat",
     purpose: "Exact hard block beats the global consent rule.",
@@ -48,7 +49,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "california-teen-chat",
     label: "California teen chat",
-    dateOfBirth: "2011-06-15",
+    ageYears: 15,
     jurisdiction: "US-CA",
     feature: "chat",
     purpose: "Subdivision beats country and wildcard.",
@@ -57,7 +58,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "texas-minor-video",
     label: "Texas minor video",
-    dateOfBirth: "2015-03-01",
+    ageYears: 11,
     jurisdiction: "US-TX",
     feature: "video_upload",
     purpose: "Subdivision-specific feature block.",
@@ -66,7 +67,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "underage-profile-photo",
     label: "Underage profile photo",
-    dateOfBirth: "2015-03-01",
+    ageYears: 11,
     jurisdiction: "US",
     feature: "profile_photo",
     purpose: "Global fallback block.",
@@ -75,7 +76,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "us-teen-purchase",
     label: "US teen purchase",
-    dateOfBirth: "2010-01-01",
+    ageYears: 16,
     jurisdiction: "US",
     feature: "purchases",
     purpose: "Feature-specific threshold.",
@@ -84,7 +85,7 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   {
     id: "missing-coverage",
     label: "Missing coverage",
-    dateOfBirth: "2015-03-01",
+    ageYears: 11,
     jurisdiction: "ZZ",
     feature: "purchases",
     purpose: "Coverage gap distinct from a hard block.",
@@ -92,13 +93,28 @@ export const DEMO_SCENARIOS: readonly DemoScenario[] = [
   },
 ];
 
+/**
+ * The birthday was yesterday, so the subject has exactly `ageYears` on the
+ * evaluation date regardless of the calendar date.
+ */
+export function dateOfBirthForAge(
+  evaluationDate: string,
+  ageYears: number,
+): string {
+  const [year, month, day] = evaluationDate.split("-").map(Number);
+  const birth = new Date(Date.UTC(year - ageYears, month - 1, day));
+  birth.setUTCDate(birth.getUTCDate() - 1);
+  return birth.toISOString().slice(0, 10);
+}
+
 export function materializeDemoScenario(
   demo: DemoScenario,
   subjectId: string,
+  evaluationDate: string,
 ): Scenario {
   return {
     subjectId,
-    dateOfBirth: demo.dateOfBirth,
+    dateOfBirth: dateOfBirthForAge(evaluationDate, demo.ageYears),
     jurisdiction: demo.jurisdiction,
     feature: demo.feature,
   };
