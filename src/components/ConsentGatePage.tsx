@@ -553,6 +553,14 @@ export default function ConsentGatePage({
                 {featureLabel(request.feature)} · {request.jurisdiction} ·{" "}
                 <code>{displaySubjectId(request.subjectId)}</code>
               </p>
+              {decision ? (
+                <p className="muted" data-testid="parent-evidence">
+                  Current evaluation: age {decision.age}
+                  {decision.matchedRule
+                    ? ` · ${featureLabel(decision.matchedRule.feature)} · min ${decision.matchedRule.minAge} · ${humanizeCode(decision.matchedRule.ifUnder)}`
+                    : " · No matching rule"}
+                </p>
+              ) : null}
               <p className="request-status-line">
                 Status:{" "}
                 <span

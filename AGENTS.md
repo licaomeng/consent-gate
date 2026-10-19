@@ -34,7 +34,7 @@ flowchart LR
     N -- Yes --> O[Commit and next milestone]
 ```
 
-One milestone at a time. Independent work may run in parallel, but the primary agent owns contracts, integration, and the final diff. The diagram covers M1–M4; M5 was a user-review round with the same tests and documentation, but no new adversarial reviewer or mutation script.
+One milestone at a time. Independent work may run in parallel, but the primary agent owns contracts, integration, and the final diff. The diagram covers M1–M4; M5 was a user-review round with focused tests. Its tooltip, live-region, and display-id guards are covered by [`tools/mutation-check-m5.sh`](tools/mutation-check-m5.sh).
 
 ## Delegation boundary
 

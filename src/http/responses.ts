@@ -1,4 +1,4 @@
-import { type DomainError, validationError } from "@/domain/errors";
+import { type DomainError, payloadTooLarge, validationError } from "@/domain/errors";
 import type { RepositoryError } from "@/repository/consent-repository";
 
 const STATUS_BY_DOMAIN_ERROR: Record<DomainError["code"], number> = {
@@ -6,6 +6,7 @@ const STATUS_BY_DOMAIN_ERROR: Record<DomainError["code"], number> = {
   request_not_found: 404,
   consent_not_required: 409,
   dependency_unavailable: 503,
+  payload_too_large: 413,
 };
 
 const DOMAIN_ERROR_CODES = new Set<DomainError["code"]>(
@@ -36,9 +37,40 @@ function isRepositoryError(error: unknown): error is RepositoryError {
   );
 }
 
+const MAX_BODY_BYTES = 8 * 1024;
+
 export async function readJson(request: Request): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    throw payloadTooLarge();
+  }
+  if (!request.body) {
+    throw validationError("request body must be valid JSON");
+  }
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw payloadTooLarge();
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
   try {
-    return await request.json();
+    return JSON.parse(new TextDecoder().decode(bytes));
   } catch {
     throw validationError("request body must be valid JSON");
   }

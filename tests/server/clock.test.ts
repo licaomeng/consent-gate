@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEvaluationDate,
   resetEvaluationDate,
@@ -35,6 +35,18 @@ describe("getEvaluationDate", () => {
     setEnv("   ", "1");
 
     expect(getEvaluationDate()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("uses the UTC calendar date when no override is set", () => {
+    setEvaluationDate(null);
+    setEnv(undefined, undefined);
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-10-19T23:30:00Z"));
+      expect(getEvaluationDate()).toBe("2026-10-19");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("ignores the override unless the test flag is explicitly set", () => {

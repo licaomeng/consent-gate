@@ -22,6 +22,8 @@ test("runs the full consent loop", async ({ page }) => {
   await expect(page.getByTestId("request-timestamps")).toContainText("UTC");
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_pending");
   await expect(page.getByTestId("waiting")).toHaveText("Waiting for parent");
+  await expect(page.getByTestId("parent-evidence")).toContainText("age 11");
+  await expect(page.getByTestId("parent-evidence")).toContainText("min 16");
 
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByTestId("request-status")).toHaveText("Approved");

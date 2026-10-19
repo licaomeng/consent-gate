@@ -42,7 +42,7 @@ erDiagram
     }
 ```
 
-`CONSENT_CURRENT` supports fast decisions. `CONSENT_EVENT` records who changed the state, when, and under which policy. Updating both belongs in one transaction. The final scope may also include product, purpose, guardian relationship, and expiry; those require product and legal decisions. The event table is append-only and access-controlled. If audit must be tamper-evident, chain event hashes or export signed batches. Retention and deletion rules apply to events as well as current state.
+`CONSENT_CURRENT` supports fast decisions. `CONSENT_EVENT` records who changed the state, when, and under which policy. The current-state row should also snapshot the age and rule used at approval, so a later policy change can explain the original decision. Updating both belongs in one transaction. The final scope may also include product, purpose, guardian relationship, and expiry; those require product and legal decisions. The event table is append-only and access-controlled. If audit must be tamper-evident, chain event hashes or export signed batches. Retention and deletion rules apply to events as well as current state.
 
 ## Migration and rollout
 

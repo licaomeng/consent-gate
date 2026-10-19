@@ -7,7 +7,7 @@ I used OpenAI Codex to analyze the brief, compare this starter with an earlier p
 - **Tools:** OpenAI Codex for brief analysis, design challenge, and documentation review; Claude Code for implementation, tests, and one read-only adversarial reviewer sub-agent for each of M1–M4.
 - **Errors caught and fixed:** a policy/API reason-code mismatch before implementation; a design claim that E2E gated deployment while CI ran only coverage and build; reused requests documented as always `pending`; fixed-date presets that drifted from the engine; cross-bundle `instanceof` turning 409/400 into 500 in production; three live regions competing to announce one status.
 - **Discarded:** editable subject identity, color-only status, client-side policy evaluation, and removing the globalThis container singleton (it would reintroduce HMR state loss).
-- **Evidence:** the per-milestone log below; 172 Vitest tests, 20 Playwright journeys, 8/8 HTTP smoke, and 26 mutation checks across M1–M5.
+- **Evidence:** the per-milestone log below; 178 Vitest tests, 20 Playwright journeys, 8/8 HTTP smoke, and 26 mutation checks across M1–M5.
 
 ## Per-milestone review log
 
@@ -19,7 +19,7 @@ One row per milestone. Source and commit links sit in the milestone cell; findin
 | **[M2 Services and HTTP](#m2-review-corrections)**<br>Agent reviewer + user review<br>[`c5b899e`](https://github.com/licaomeng/consent-gate/commit/c5b899e390f6558b619da62506e051d340eca001), [`88f558f`](https://github.com/licaomeng/consent-gate/commit/88f558f3af1bde75194ee6a122862f29a4cd8eca) | Repository behind an interface<br>Decision and consent services<br>Gated clock and composition root<br>Error mapping; four `/api/v1` operations<br>HTTP smoke | **Agent:** one defect (lazy config → 400), one hazard (`created` inference), five gaps<br>**User:** three defects (blank clock, unlogged 5xx, module-local singleton)<br>**Rejected:** 404 on a vanished row | **123 tests** (116 → 123)<br>**13/13 mutations** red |
 | **[M3 Page and E2E](#m3-review-pass-1)**<br>Agent reviewer + user review<br>[`73c1f07`](https://github.com/licaomeng/consent-gate/commit/73c1f07b11b8682713c5db88b8f48fbf108f73df), [`b0010ff`](https://github.com/licaomeng/consent-gate/commit/b0010ff7933d5582cd38c053271baa80add909ed) | Single-page UI<br>Action matrix and eight presets<br>Browser journeys | **Agent:** seven state-machine, evidence, and accessibility defects<br>**User:** four defects (fixed-date presets, E2E reuse, contradictory docs, editable inputs) | **164 tests** (139 → 164)<br>**11 journeys** (10 → 11)<br>**6/6 mutations** red<br>Coverage 98.47% / 94.73% |
 | **[M4 Verification and handoff](#m4-review-corrections)**<br>Agent reviewer + user review + HTTP smoke<br>[`be2a4df`](https://github.com/licaomeng/consent-gate/commit/be2a4dfaeb961224f3e667a6de1a6289f3cb02ce), [`49c676b`](https://github.com/licaomeng/consent-gate/commit/49c676bd4a363fc156c0dab046b15b16f9581ba1) | Empty-suite allowances removed<br>HTTP smoke and mutation scripts landed<br>Docs reconciled | **Agent:** seven documentation issues<br>**Smoke:** cross-bundle `instanceof` turned 409/400 into 500<br>**User:** three tooling findings<br>**Rejected:** singleton removal | **168 tests** (164 → 168)<br>**14 journeys** (11 → 14)<br>HTTP smoke 8/8<br>M1–M3 mutations red<br>Coverage 98.5% / 95.06% |
-| **[M5 Front-end UX and accessibility](#m5-review-pass-1-front-end-ux-and-accessibility)**<br>User review (three passes)<br>[`400aa7d`](https://github.com/licaomeng/consent-gate/commit/400aa7dc4a3fd694e891ba02b1cbc28d9d406761), [`320c741`](https://github.com/licaomeng/consent-gate/commit/320c74131fd613aac80bbb8af79b7460b46ad911) | Expected tags and semantic colors<br>Human-readable labels; expected vs actual<br>Layered decision card; accessible controls<br>Follow-up: full ids, one live region, dismissible tooltips, UTC timestamps | **Pass 1:** presentation and accessibility gaps<br>**Pass 2:** card density, title hierarchy, help affordances<br>**Pass 3:** id entropy, duplicate announcements, tooltip dismissal, generated-file churn, locale timestamps<br>**Rejected:** editable identity, color-only status, client-side policy | **172 tests** (168 → 172)<br>**20 journeys** (14 → 20)<br>**3/3 M5 mutations** red<br>Coverage **98.62% / 95.5%** |
+| **[M5 Front-end UX and accessibility](#m5-review-pass-1-front-end-ux-and-accessibility)**<br>User review (three passes) + interviewer critic<br>[`400aa7d`](https://github.com/licaomeng/consent-gate/commit/400aa7dc4a3fd694e891ba02b1cbc28d9d406761), [`320c741`](https://github.com/licaomeng/consent-gate/commit/320c74131fd613aac80bbb8af79b7460b46ad911) | Expected tags and semantic colors<br>Human-readable labels; expected vs actual<br>Layered decision card; accessible controls<br>Follow-up: full ids, one live region, dismissible tooltips, UTC timestamps | **Pass 1:** presentation and accessibility gaps<br>**Pass 2:** card density, title hierarchy, help affordances<br>**Pass 3:** id entropy, duplicate announcements, tooltip dismissal, generated-file churn, locale timestamps<br>**Pass 4:** input limits, UTC date policy, parent evidence, century leap tests<br>**Rejected:** editable identity, color-only status, client-side policy | **178 tests** (168 → 178)<br>**20 journeys** (14 → 20)<br>**3/3 M5 mutations** red<br>Coverage **98.41% / 95.21%** |
 
 ## Review details
 
@@ -127,6 +127,16 @@ The findings came from a reviewer run pasted by the user. The follow-up removed 
 5. **[User review] `next-env.d.ts` was staged with dev paths.** The staged diff changed `.next/types` to `.next/dev/types`. The claimed clean-checkout `tsc` failure did not reproduce (a temp project with no `.next` exited 0), and CI only runs `build`/`test:e2e`, so this was generated churn. The file is now untracked and listed in `.gitignore`, so `next dev` and `next build` stop dirtying the tree. [.gitignore:13](https://github.com/licaomeng/consent-gate/commit/320c74131fd613aac80bbb8af79b7460b46ad911#diff-bc37d034bad564583790a46f19d807abfe519c5671395fd494d8cce506c42947R13)
 6. **[User review] Timestamps used the viewer's locale.** `toLocaleString()` rendered an unlabelled local time beside a date-only `evaluatedAt`. They now render as UTC strings inside `<time dateTime>` elements. No existing test read those strings, so the reviewer's "tests depend on the runner's locale" claim was corrected; the E2E now asserts the UTC label. [ConsentGatePage.tsx:80](https://github.com/licaomeng/consent-gate/commit/320c74131fd613aac80bbb8af79b7460b46ad911#diff-94e3e70c05ca2331499b14b17b6adc921b61c30878fff35a271610f16521664cR80)
 
+### M5 review pass 4: interviewer-style hardening
+
+An interviewer-style critic review found the gaps below. None changed the core decision semantics.
+
+1. **[Interviewer critic] Public input had no size limits.** `readJson` now caps bodies at 8 KiB and returns `413 payload_too_large` for declared and streamed bodies; `subjectId` is capped at 128 characters and the other input strings have bounds. API and unit tests cover both paths. [src/http/responses.ts](src/http/responses.ts)
+2. **[Interviewer critic] The evaluation date's timezone was unstated.** Age is now explicitly evaluated on the server's UTC date; `DECISIONS.md` records that production should use the subject's local date, and a fake-timer test pins the UTC behavior.
+3. **[Interviewer critic] The parent panel did not show what was approved.** It now shows the current age and matched rule; `DECISIONS.md` records that the exercise does not snapshot approval-time evidence.
+4. **[Interviewer critic] Century leap years were untested.** Tests now reject `1900-02-29` and `2100-02-29` and accept `2000-02-29`.
+5. **[Interviewer critic] Docs contradicted themselves.** The M5 mutation statement in `AGENTS.md`, the coverage scope, and the `subjectId` deviation in `README.md` are reconciled.
+
 ### M5 rejected suggestions
 
 - **Editable subject identity.** Rejected: the synthetic subject isolates walkthroughs without authentication; making it editable would blur which records belong to which demo.
@@ -139,8 +149,8 @@ Last full run: 2026-10-20, on the current master tree.
 
 | Check | Result |
 |---|---|
-| Unit tests | 172 passing across 14 files |
-| Coverage | 98.62% statements, 95.5% branches, 100% functions |
+| Unit tests | 178 passing across 14 files |
+| Coverage | 98.41% statements, 95.21% branches, 100% functions (server-side modules; client components are covered by Playwright) |
 | Browser journeys | 20 passing (consent loop and reversal, hard block, coverage gap, precedence, accessibility, API contract) |
 | Production build | passed; the page is dynamic and all four `/api/v1` operations are registered |
 | HTTP smoke | 8/8 via [`tools/http-smoke.sh`](tools/http-smoke.sh) against `next start` |

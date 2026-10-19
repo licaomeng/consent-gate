@@ -75,6 +75,8 @@ Accounts, guardian verification, and durable storage are outside the brief, whic
 
 The workflow runs with no infrastructure. The trade-off is that state resets on restart or redeploy and is not shared across instances. Production would move to PostgreSQL, because consent needs uniqueness, transactions, conditional updates, and auditable history; browser storage would put authoritative consent in the wrong trust boundary.
 
+The exercise does not snapshot the age, matched rule, or policy version into the consent record; the parent panel shows the current evaluation. Production should store the approval-time evidence so a later policy change can be explained.
+
 **Alternatives considered**
 
 - **Require real accounts**: expands the scope beyond the exercise.
@@ -86,7 +88,7 @@ The workflow runs with no infrastructure. The trade-off is that state resets on 
 
 Age is an enforcement input, and a caller must not be able to declare its own age. Dates and jurisdiction codes arrive from users and need one canonical interpretation.
 
-> **The server owns the evaluation date and rejects a client-supplied one.** A DOB must be a real `YYYY-MM-DD` calendar date; invalid, implausible (before 1900), and future dates are rejected. February 29 advances to March 1 in a non-leap year. The evaluation date is injected once per request and returned as `evaluatedAt`.
+> **The server owns the evaluation date and rejects a client-supplied one.** A DOB must be a real `YYYY-MM-DD` calendar date; invalid, implausible (before 1900), and future dates are rejected. February 29 advances to March 1 in a non-leap year. The evaluation date is injected once per request and returned as `evaluatedAt`. Age is evaluated on the server's UTC calendar date; the exercise carries no jurisdiction timezone data, so production should use the subject's local date.
 
 > **Input is normalized once, at the server boundary.** Jurisdictions are trimmed and uppercased, then checked against `^[A-Z]{2}(-[A-Z0-9]{1,3})?$`. A malformed value is a `validation_error` and never falls through to `*`; a well-formed but unknown jurisdiction follows the normal lookup. Features must exactly match `policy.features`. Operational timestamps are stored and returned as UTC ISO 8601.
 

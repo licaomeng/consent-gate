@@ -20,10 +20,15 @@ describe("parseCalendarDate", () => {
       month: 2,
       day: 29,
     });
+    expect(parseCalendarDate("2000-02-29", "dateOfBirth")).toEqual({
+      year: 2000,
+      month: 2,
+      day: 29,
+    });
   });
 
   it("rejects malformed and impossible dates", () => {
-    for (const value of ["2023-02-29", "2023-02-30", "2023-13-01", "2023-00-10", "15/03/2015", "2023-1-1"]) {
+    for (const value of ["2023-02-29", "1900-02-29", "2100-02-29", "2023-02-30", "2023-13-01", "2023-00-10", "15/03/2015", "2023-1-1"]) {
       expectValidationError(() => parseCalendarDate(value, "dateOfBirth"));
     }
   });

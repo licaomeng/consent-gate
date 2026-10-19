@@ -13,6 +13,7 @@ describe("errorResponse", () => {
     ["request_not_found", 404],
     ["consent_not_required", 409],
     ["dependency_unavailable", 503],
+    ["payload_too_large", 413],
   ] as const)("maps %s to %d", (code, status) => {
     const response = errorResponse(new DomainError(code, "message"));
 
@@ -95,6 +96,34 @@ describe("errorResponse", () => {
 });
 
 describe("readJson", () => {
+  it("rejects a missing body with the validation contract", async () => {
+    const request = new Request("http://localhost/api/v1/decisions", {
+      method: "POST",
+    });
+
+    await expect(readJson(request)).rejects.toMatchObject({
+      code: "validation_error",
+    });
+  });
+
+  it("rejects a streamed body over the limit without a content-length header", async () => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("x".repeat(9000)));
+        controller.close();
+      },
+    });
+    const request = new Request("http://localhost/api/v1/decisions", {
+      method: "POST",
+      body,
+      duplex: "half",
+    } as RequestInit);
+
+    await expect(readJson(request)).rejects.toMatchObject({
+      code: "payload_too_large",
+    });
+  });
+
   it("rejects malformed JSON with the validation contract", async () => {
     const request = new Request("http://localhost/api/v1/decisions", {
       method: "POST",

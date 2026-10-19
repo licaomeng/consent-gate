@@ -6,7 +6,7 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject id, date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. The demo generates the subject id; a production product would derive it from an authenticated profile. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** all milestones are delivered. `npm run verify` runs 172 Vitest tests, a production build, and 20 Playwright journeys.
+> **Current state:** all milestones are delivered. `npm run verify` runs 178 Vitest tests, a production build, and 20 Playwright journeys.
 
 ## At a glance
 
@@ -27,7 +27,7 @@ All routes are under `/api/v1`.
 | `GET` | `/api/v1/consent-requests?subjectId=...` | List requests for a subject |
 | `PATCH` | `/api/v1/consent-requests/:id` | Approve, decline, or reverse |
 
-`POST /api/v1/decisions` takes `subjectId`, `dateOfBirth`, `jurisdiction`, and `feature`, and returns the decision, reason, age, evaluation date, lookup path, and matched rule. The evaluation date is server-owned; sending one is a `400`.
+`POST /api/v1/decisions` takes `subjectId`, `dateOfBirth`, `jurisdiction`, and `feature`, and returns the decision, reason, age, evaluation date, lookup path, and matched rule. The evaluation date is server-owned; sending one is a `400`. The brief's three inputs determine what to evaluate; consent must also be tied to a subject, so the demo adds a synthetic `subjectId`. Production derives it from the authenticated profile. Request bodies are capped at 8 KiB and return `413 payload_too_large` above that.
 
 ## Review path
 
@@ -70,7 +70,7 @@ Open [http://localhost:3000](http://localhost:3000). For the production build, r
 ## Verify
 
 ```bash
-npm run test:run       # 172 Vitest tests
+npm run test:run       # 178 Vitest tests
 npm run build          # production build of the page and the three /api/v1 route files (four operations)
 npx playwright install chromium   # once, before the browser journeys
 npm run test:e2e       # 20 Playwright journeys (run npm run build first)

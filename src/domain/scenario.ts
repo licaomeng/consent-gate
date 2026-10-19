@@ -5,10 +5,10 @@ import { normalizeJurisdiction } from "./policy";
 import type { Policy, Scenario } from "./types";
 
 const scenarioSchema = z.strictObject({
-  subjectId: z.string().trim().min(1),
-  dateOfBirth: z.string().min(1),
-  jurisdiction: z.string().min(1),
-  feature: z.string().min(1),
+  subjectId: z.string().trim().min(1).max(128),
+  dateOfBirth: z.string().min(1).max(32),
+  jurisdiction: z.string().min(1).max(16),
+  feature: z.string().min(1).max(64),
 });
 
 /**

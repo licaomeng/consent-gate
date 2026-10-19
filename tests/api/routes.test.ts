@@ -79,6 +79,32 @@ describe("POST /api/v1/decisions", () => {
     expect(body.error.code).toBe("validation_error");
   });
 
+  it("rejects a subject id over the length limit", async () => {
+    const response = await postDecision(
+      jsonRequest("POST", "/api/v1/decisions", {
+        ...childChat,
+        subjectId: "x".repeat(129),
+      }),
+    );
+    const { status, body } = await read(response);
+
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("validation_error");
+  });
+
+  it("rejects a body over the size limit before parsing it", async () => {
+    const response = await postDecision(
+      jsonRequest("POST", "/api/v1/decisions", {
+        ...childChat,
+        subjectId: "x".repeat(9000),
+      }),
+    );
+    const { status, body } = await read(response);
+
+    expect(status).toBe(413);
+    expect(body.error.code).toBe("payload_too_large");
+  });
+
   it("rejects a client-supplied evaluation date", async () => {
     const response = await postDecision(
       jsonRequest("POST", "/api/v1/decisions", {

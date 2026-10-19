@@ -135,7 +135,7 @@ Audit history and concurrent updates across processes are production concerns, n
 
 ## 3. API contract
 
-REST fits the four explicit operations. `POST /decisions` is a computation despite using POST, and it keeps DOB out of URLs. `GET /consent-requests` reads state; only consent `POST` and `PATCH` mutate it. A new request is created only after the server re-evaluates eligibility; an existing scope is returned unchanged.
+REST fits the four explicit operations. `POST /decisions` is a computation despite using POST, and it keeps DOB out of URLs. `GET /consent-requests` reads state; only consent `POST` and `PATCH` mutate it. A new request is created only after the server re-evaluates eligibility; an existing scope is returned unchanged. The evaluation date is the server's UTC calendar date; a client-supplied date is rejected.
 
 | Method | Endpoint | Success |
 |---|---|---|
@@ -223,6 +223,7 @@ Errors use `{ "error": { "code": string, "message": string } }`. Reason codes ex
 | `400` | `validation_error` | Malformed JSON, invalid/implausible/future date, invalid jurisdiction, missing field, unknown feature, client-supplied evaluation date, invalid status |
 | `404` | `request_not_found` | Consent request ID does not exist |
 | `409` | `consent_not_required` | Current policy does not permit creating a consent request |
+| `413` | `payload_too_large` | Request body exceeds 8 KiB |
 | `503` | `dependency_unavailable` | Required consent state cannot be read or written safely |
 | `500` | `internal_error` | Unexpected failure; internal details are never returned to the client |
 
@@ -415,7 +416,7 @@ Each risk is tested at the narrowest useful layer. Tests pin the evaluation date
 
 `npm run test:coverage` runs Vitest with the V8 provider. It covers the server-side modules imported by tests: domain, application, repository, server, and services. Client components are exercised by Playwright and are not included in this percentage.
 
-Current: 98.62% statements, 95.5% branches, 100% functions, 98.94% lines. The remaining branches are defensive paths the API cannot reach: an inconsistent repository index, a missing record on the repository write path, and an out-of-range month fallback. Manufacturing state to cover them would test the test, not the product.
+Current: 98.41% statements, 95.21% branches, 100% functions, 98.7% lines. The remaining branches are defensive paths the API cannot reach: an inconsistent repository index, a missing record on the repository write path, and an out-of-range month fallback. Manufacturing state to cover them would test the test, not the product.
 
 Coverage is a diagnostic, not a target. The guards are the mutation checks for safety rules, including the M5 tooltip, live-region, and display-id checks, and the Playwright journeys for wiring. A high percentage with a vacuous assertion is still a weak suite.
 
