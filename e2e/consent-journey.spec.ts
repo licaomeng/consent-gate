@@ -15,13 +15,18 @@ test("runs the full consent loop", async ({ page }) => {
   await page.getByRole("button", { name: "Ask a parent" }).click();
   await expect(page.getByTestId("request-status")).toHaveText("Pending");
   await expect(page.getByTestId("request-status")).toHaveClass(/status-pending/);
-  await expect(page.getByTestId("request-status")).toHaveAttribute("aria-live", "polite");
+  // One always-mounted live region announces the status; the visible badge
+  // must not announce it a second time.
+  await expect(page.getByTestId("decision-summary")).toContainText("Status: Pending");
+  await expect(page.getByTestId("request-status")).not.toHaveAttribute("aria-live", "polite");
+  await expect(page.getByTestId("request-timestamps")).toContainText("UTC");
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_pending");
   await expect(page.getByTestId("waiting")).toHaveText("Waiting for parent");
 
   await page.getByRole("button", { name: "Approve" }).click();
   await expect(page.getByTestId("request-status")).toHaveText("Approved");
   await expect(page.getByTestId("request-status")).toHaveClass(/status-approved/);
+  await expect(page.getByTestId("decision-summary")).toContainText("Status: Approved");
   await expect(page.getByTestId("decision")).toHaveText("Allowed");
   await expect(page.getByTestId("decision-card")).toHaveClass(/decision-allowed/);
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_approved");
@@ -95,7 +100,7 @@ test("marks the selected demo case and compares expected with actual", async ({ 
   );
 });
 
-test("explains key controls with hover and focus help", async ({ page }) => {
+test("explains key controls with hover, focus, click, and Escape", async ({ page }) => {
   const help = page.getByTestId("help-new-subject");
   const tooltip = page.getByTestId("tooltip-new-subject");
 
@@ -105,6 +110,17 @@ test("explains key controls with hover and focus help", async ({ page }) => {
   await help.focus();
   await expect(tooltip).toHaveCSS("opacity", "1");
   await expect(help).toHaveAttribute("aria-describedby", "new-subject-tooltip");
+
+  await page.keyboard.press("Escape");
+  await expect(tooltip).toHaveCSS("opacity", "0");
+
+  // A click toggles the tooltip without relying on hover, so touch users have
+  // a deterministic way to open and close it.
+  await page.reload();
+  await help.dispatchEvent("click");
+  await expect(tooltip).toHaveCSS("opacity", "1");
+  await help.dispatchEvent("click");
+  await expect(tooltip).toHaveCSS("opacity", "0");
 });
 
 test("creates a new synthetic subject on demand", async ({ page }) => {
@@ -114,6 +130,8 @@ test("creates a new synthetic subject on demand", async ({ page }) => {
   await page.getByTestId("new-subject").click();
 
   await expect(subject).not.toHaveText(before ?? "");
+  // The stored id stays a full random id; only the display is shortened.
+  await expect(subject).toHaveText(/^manual-[0-9a-f]{8}$/);
 });
 
 test("lists other consent scopes for the same subject", async ({ page }) => {

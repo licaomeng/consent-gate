@@ -325,7 +325,7 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 
 - Use native controls with programmatic labels; every input and select has a visible label.
 - Demo cases are buttons; the selected case exposes `aria-pressed`, and its expected outcome is visible text, never colour alone.
-- A concise, visually hidden live region announces the decision summary; progress uses `role="status"`, and the parent status is polite-live.
+- A single always-mounted, visually hidden polite live region announces the decision and request status; progress uses `role="status"`. The visible parent status badge is not a live region, and after a parent action the request status and fresh decision are committed in one render so the announcement never describes a mixed state.
 - Colour is supplementary: every decision and status also carries text and its stable reason or status code.
 - Keyboard operation and a visible focus ring are required; the active action and scenario inputs are disabled while a request is in flight.
 - Errors use `role="alert"`; the policy table has a caption and column headers.
@@ -334,7 +334,8 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 - Tag and status text meets WCAG AA contrast (4.5:1) and is at least 0.72rem; colour is never the only signal.
 - The parent panel lists other consent scopes for the same subject, and **New subject** resets the synthetic identity without touching the server.
 - The page title is two deliberate lines; the second sentence carries the accent colour.
-- Key controls expose an inline help button: a focusable trigger with `aria-describedby`, a `role="tooltip"` panel shown on hover and focus, and the same copy available to assistive technology.
+- Key controls expose an inline help button: a focusable trigger with `aria-describedby` and a `role="tooltip"` panel. It opens on hover or focus, toggles on click, and closes on Escape or an outside press, so it is usable on touch and satisfies WCAG 1.4.13.
+- Request timestamps render as UTC inside `<time dateTime>` elements rather than in the viewer's locale.
 
 
 ### Demo cases
@@ -350,7 +351,7 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 | US teen purchase | `parental_consent` | Feature-specific threshold |
 | Missing coverage | `blocked` | Distinct `no_matching_policy` reason |
 
-Selecting a preset generates a fresh synthetic subject, so an earlier decision cannot contaminate the walkthrough. Expected metadata is presentation-only; a contract test evaluates every preset against the real engine. Presets carry an age rather than a fixed date of birth: the page is rendered per request with the server's evaluation date and derives each DOB from it, so the advertised outcome does not drift as the calendar advances.
+Selecting a preset generates a fresh synthetic subject, so an earlier decision cannot contaminate the walkthrough. The stored subject id carries a full random 128-bit value; the page shortens it for display only, because the id is the capability for reading or changing that subject's consent records. Expected metadata is presentation-only; a contract test evaluates every preset against the real engine. Presets carry an age rather than a fixed date of birth: the page is rendered per request with the server's evaluation date and derives each DOB from it, so the advertised outcome does not drift as the calendar advances.
 
 ### Frontend architecture
 

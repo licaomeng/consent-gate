@@ -48,11 +48,39 @@ const PHASE_LABEL: Record<UiPhase, string> = {
   updating_request: "Updating the request…",
 };
 
-function newSubjectId(prefix: string): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+function randomId(): string {
+  if (typeof crypto !== "undefined") {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    if (typeof crypto.getRandomValues === "function") {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
   }
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function newSubjectId(prefix: string): string {
+  return `${prefix}-${randomId()}`;
+}
+
+// The full id is the capability for reading or changing a consent request.
+// Shorten it only for display, never for storage or requests.
+function displaySubjectId(id: string): string {
+  const uuid = id.match(
+    /^(.*-)([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  );
+  if (uuid) return `${uuid[1]}${uuid[2]}`;
+  const hex = id.match(/^(.*-)([0-9a-f]{8})[0-9a-f]{24}$/i);
+  if (hex) return `${hex[1]}${hex[2]}`;
+  return id;
+}
+
+function utcTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
 function errorMessage(body: unknown): string {
@@ -266,6 +294,14 @@ export default function ConsentGatePage({
   async function setParentDecision(status: "approved" | "declined"): Promise<void> {
     if (!active || !request || busy) return;
     const token = begin("updating_request");
+    let updated: ConsentRequest | null = null;
+
+    function commitRequest(entry: ConsentRequest): void {
+      setRequest(entry);
+      setRequests((current) =>
+        current.map((item) => (item.id === entry.id ? entry : item)),
+      );
+    }
 
     try {
       const updateResponse = await fetch(
@@ -284,11 +320,7 @@ export default function ConsentGatePage({
         setPhase("idle");
         return;
       }
-      const updated = updateBody as ConsentRequest;
-      setRequest(updated);
-      setRequests((current) =>
-        current.map((entry) => (entry.id === updated.id ? updated : entry)),
-      );
+      updated = updateBody as ConsentRequest;
 
       // No optimistic update: run a fresh decision after the parent action.
       const decisionResponse = await fetch("/api/v1/decisions", {
@@ -300,8 +332,9 @@ export default function ConsentGatePage({
       if (isStale(tokenRef.current, token)) return;
 
       if (!decisionResponse.ok) {
-        // The write succeeded but the fresh evidence did not. Keeping the old
-        // decision beside the new status would show contradictory evidence.
+        // The write succeeded but the fresh evidence did not. Commit the new
+        // status alone and clear the stale decision.
+        commitRequest(updated);
         setDecision(null);
         setError(
           "Request updated, but the fresh decision could not be evaluated. Check access to retry.",
@@ -310,10 +343,15 @@ export default function ConsentGatePage({
         return;
       }
 
+      // Commit the status and the fresh decision in one render so the live
+      // summary never announces a mixed state such as "needs consent ·
+      // approved".
+      commitRequest(updated);
       setDecision(decisionBody as DecisionResult);
       setPhase("idle");
     } catch {
       if (isStale(tokenRef.current, token)) return;
+      if (updated) commitRequest(updated);
       setDecision(null);
       setError("Network error — the request may have been updated; check access to refresh.");
       setPhase("idle");
@@ -396,7 +434,8 @@ export default function ConsentGatePage({
           </div>
           <div className="subject-line">
             <p className="subject">
-              Demo subject: <code>{draft.subjectId || "…"}</code>
+              Demo subject:{" "}
+              <code>{draft.subjectId ? displaySubjectId(draft.subjectId) : "…"}</code>
             </p>
             <div className="subject-actions">
               <button
@@ -512,22 +551,26 @@ export default function ConsentGatePage({
             <>
               <p className="muted">
                 {featureLabel(request.feature)} · {request.jurisdiction} ·{" "}
-                <code>{request.subjectId}</code>
+                <code>{displaySubjectId(request.subjectId)}</code>
               </p>
               <p className="request-status-line">
                 Status:{" "}
                 <span
                   className={`status status-${request.status}`}
                   data-testid="request-status"
-                  role="status"
-                  aria-live="polite"
                 >
                   {consentStatusLabel(request.status)}
                 </span>
               </p>
-              <p className="muted">
-                Created {new Date(request.createdAt).toLocaleString()} · Updated{" "}
-                {new Date(request.updatedAt).toLocaleString()}
+              <p className="muted" data-testid="request-timestamps">
+                Created{" "}
+                <time dateTime={request.createdAt}>
+                  {utcTimestamp(request.createdAt)}
+                </time>{" "}
+                · Updated{" "}
+                <time dateTime={request.updatedAt}>
+                  {utcTimestamp(request.updatedAt)}
+                </time>
               </p>
               <div className="button-row">
                 <button

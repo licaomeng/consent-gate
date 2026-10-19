@@ -590,8 +590,7 @@ select:focus-visible {
   z-index: 30;
 }
 
-.help-tip:hover .help-tip-content,
-.help-tip:focus-within .help-tip-content {
+.help-tip-open {
   opacity: 1;
 }
 
