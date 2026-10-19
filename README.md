@@ -53,7 +53,8 @@ Then read [`docs/DESIGN.md`](docs/DESIGN.md) for the contracts. The map below co
 | [`docs/EXERCISE_BRIEF.md`](docs/EXERCISE_BRIEF.md) | The original prompt, preserved unchanged |
 | [`AGENTS.md`](AGENTS.md) | Agent collaboration contract: milestones, delegation, review protocol |
 | [`CLAUDE.md`](CLAUDE.md) | Claude-specific project constraints and workflow |
-| [`AI-USE.md`](AI-USE.md) | What AI produced, where it was wrong, and what was discarded |
+| [`AI-USE.md`](AI-USE.md) | Short record of what AI produced, where it was wrong, and what was discarded |
+| [`docs/AI-USE-LOG.md`](docs/AI-USE-LOG.md) | Full per-milestone AI review log and line-level evidence |
 | [`DECISIONS.md`](DECISIONS.md) | Open choices, rationale, trade-offs, and skipped work |
 
 ## Run locally

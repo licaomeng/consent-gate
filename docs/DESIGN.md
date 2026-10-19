@@ -454,7 +454,7 @@ Each brief requirement maps to delivered evidence:
 | Answers stay right | Precedence, birthday, scope-isolation, and hard-block regression tests |
 | A couple of meaningful tests | Non-empty suites at the layers above; CI must fail when they fail |
 | [`DECISIONS.md`](../DECISIONS.md) | Final choices, rationale, trade-offs, and skipped work match the code |
-| [`AI-USE.md`](../AI-USE.md) | Actual tools, accepted contributions, rejected output, and corrections |
+| [`AI-USE.md`](../AI-USE.md) | Short record of tools, mistakes, and discarded output; full log in [`docs/AI-USE-LOG.md`](AI-USE-LOG.md) |
 | README run instructions | Clean install, build, test, and start verified from the reviewed commit |
 
 ## 6. Production boundary
