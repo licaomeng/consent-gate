@@ -36,11 +36,17 @@ export function createContainer(
   };
 }
 
-const initialContainer = createContainer();
-let current: Container = initialContainer;
+const globalStore = globalThis as typeof globalThis & {
+  __consentGateContainer?: Container;
+};
+
+// Create at module load so an invalid policy or clock fails startup. Storing it
+// on globalThis also survives Next.js module reloads during development, which
+// would otherwise reset the in-memory consent store mid-demo.
+globalStore.__consentGateContainer ??= createContainer();
 
 export function getContainer(): Container {
-  return current;
+  return globalStore.__consentGateContainer as Container;
 }
 
 /**
@@ -48,9 +54,9 @@ export function getContainer(): Container {
  * only; no request can reach it.
  */
 export function setContainer(next: Container): void {
-  current = next;
+  globalStore.__consentGateContainer = next;
 }
 
 export function resetContainer(): void {
-  current = createContainer();
+  globalStore.__consentGateContainer = createContainer();
 }

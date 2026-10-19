@@ -25,6 +25,8 @@ export function errorResponse(error: unknown): Response {
   }
 
   if (error instanceof RepositoryError) {
+    // The client gets a stable contract; operators still need the cause.
+    console.error("[consent-gate] storage failure", error);
     return Response.json(
       {
         error: {
@@ -36,6 +38,7 @@ export function errorResponse(error: unknown): Response {
     );
   }
 
+  console.error("[consent-gate] unexpected error", error);
   return Response.json(
     { error: { code: "internal_error", message: "unexpected error" } },
     { status: 500 },

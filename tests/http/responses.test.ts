@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DomainError, validationError } from "@/domain/errors";
 import { errorResponse, readJson } from "@/http/responses";
 import { RepositoryError } from "@/repository/consent-repository";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("errorResponse", () => {
   it.each([
@@ -15,21 +19,36 @@ describe("errorResponse", () => {
     expect(response.status).toBe(status);
   });
 
-  it("maps a repository failure to 503", async () => {
+  it("does not log expected domain errors", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    errorResponse(new DomainError("validation_error", "bad input"));
+    errorResponse(new DomainError("request_not_found", "missing"));
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("maps a repository failure to 503 and logs it for operators", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const response = errorResponse(new RepositoryError("storage unavailable"));
     const body = await response.json();
 
     expect(response.status).toBe(503);
     expect(body.error.code).toBe("dependency_unavailable");
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it("does not leak an unexpected error", async () => {
+  it("does not leak an unexpected error but logs it for operators", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+
     const response = errorResponse(new Error("secret internal detail"));
     const body = await response.json();
 
     expect(response.status).toBe(500);
     expect(body.error.code).toBe("internal_error");
     expect(JSON.stringify(body)).not.toContain("secret internal detail");
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });
 

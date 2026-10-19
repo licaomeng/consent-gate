@@ -394,7 +394,7 @@ Approve and decline are not optimistic updates. Consent is enforcement state, so
 
 ## 5. Verification
 
-Each risk is tested at the narrowest useful layer. Tests pin the evaluation date in-process; the request contract exposes no evaluation-date seam.
+Each risk is tested at the narrowest useful layer. Tests pin the evaluation date in-process; the request contract exposes no evaluation-date seam. The environment override is honored only when `CONSENT_GATE_ALLOW_TEST_CLOCK=1`, so an accidental deployment variable cannot freeze production dates.
 
 > **Testing principle:** prove business rules close to the domain, prove boundaries once, and reserve browser tests for journeys whose wiring matters.
 

@@ -29,6 +29,11 @@ export interface ConsentRepository {
    * the earlier lookup alone.
    */
   create(scope: ConsentScope): CreateConsentResult;
+  /**
+   * The service checks `getById` first and owns the 404 for an unknown id. A
+   * missing row at write time is a storage inconsistency (503), not a second
+   * lookup path; cross-process races are outside the exercise's guarantees.
+   */
   updateStatus(id: string, status: ConsentStatus): ConsentRequest;
 }
 
