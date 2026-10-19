@@ -55,11 +55,11 @@ flowchart LR
   M4 --> M5[M5 UX, accessibility, and review fixes]
 ```
 
-1. **M1 Domain core** — shared types, policy validation and precedence, calendar age, input normalization, decision evaluation, consent state machine, and their unit tests.
-2. **M2 Services and HTTP** — repository, decision and consent services, three versioned route files implementing four operations, and API tests.
-3. **M3 Page and E2E** — demonstration page, presets, action matrix, demo contract tests, and the Playwright journey.
-4. **M4 Verification and handoff** — remove empty-suite allowances, run the full verification ladder, reconcile documentation with delivered behavior, and verify the deployed revision.
-5. **M5 Front-end UX and accessibility** — a user-review round over the M3 page: expected outcomes before selection, semantic status display, accessible controls, and the review-driven hardening recorded in `AI-USE.md`.
+1. **M1 Domain core**: shared types, policy validation and precedence, calendar age, input normalization, decision evaluation, consent state machine, and their unit tests.
+2. **M2 Services and HTTP**: repository, decision and consent services, three versioned route files implementing four operations, and API tests.
+3. **M3 Page and E2E**: demonstration page, presets, action matrix, demo contract tests, and the Playwright journey.
+4. **M4 Verification and handoff**: remove empty-suite allowances, run the full verification ladder, reconcile documentation with delivered behavior, and verify the deployed revision.
+5. **M5 Front-end UX and accessibility**: a user-review round over the M3 page: expected outcomes before selection, semantic status display, accessible controls, and the review-driven hardening recorded in `AI-USE.md`.
 
 ## Per-milestone verification and adversarial review
 

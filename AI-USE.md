@@ -45,7 +45,7 @@ Rejected suggestion: moving future-DOB validation into `parseScenario`. It needs
 
 Initial M2 implementation: [`16f130d`](https://github.com/licaomeng/consent-gate/commit/16f130d). Review fixes: [`ccbc854`](https://github.com/licaomeng/consent-gate/commit/ccbc854).
 
-1. **[Agent reviewer] Configuration failures were lazy and reported as client errors.** The container loaded the policy and read the evaluation date on the first request, so an invalid `policy.json` or `CONSENT_GATE_EVALUATION_DATE` produced `400 validation_error` — a client-blaming answer for a server misconfiguration. Fix: the container is created eagerly at module load (build/startup) and validates the clock at construction. Test: `createContainer()` throws when the evaluation date is invalid.
+1. **[Agent reviewer] Configuration failures were lazy and reported as client errors.** The container loaded the policy and read the evaluation date on the first request, so an invalid `policy.json` or `CONSENT_GATE_EVALUATION_DATE` produced `400 validation_error`, a client-blaming answer for a server misconfiguration. Fix: the container is created eagerly at module load (build/startup) and validates the clock at construction. Test: `createContainer()` throws when the evaluation date is invalid.
 2. **[Agent reviewer] `created` was inferred from the pre-write lookup.** A conforming production repository can deduplicate inside `create` (unique constraint), so answering `201 created:true` from the earlier lookup could lie. Fix: `create` returns `{ request, created }`; the service reports `created` from the write result. Test: a repository whose lookup misses but whose write deduplicates returns `created:false`.
 3. **[Agent reviewer + mutation check] Test gaps closed.** Route-level `503` for all four operations, read-only `POST /decisions` proven over HTTP, subject isolation over HTTP, `409` for adults and coverage gaps, error-message presence, and the policy-drift case where an existing record must be returned before re-evaluating eligibility under a new hard-block policy.
 4. **[User review] A blank test-clock override crashed startup, and production could freeze every age.** `?.trim()` returned `""`, which `??` treated as set, so `CONSENT_GATE_EVALUATION_DATE=""` reached `parseCalendarDate` and failed during eager container creation. Separately, an accidental production value would freeze the evaluation date. Fix: blank means unset, and the override is honored only with the explicit `CONSENT_GATE_ALLOW_TEST_CLOCK=1` opt-in. Tests cover blank, absent flag, present flag, invalid value, and the in-process pin taking precedence.
@@ -145,7 +145,7 @@ Last full run: 2026-10-20, against code commit [`57acc25`](https://github.com/li
 | HTTP smoke | 8/8 via `tools/http-smoke.sh` against `next start` |
 | `npm run verify` | passed with non-empty suites |
 | Empty-suite allowances | removed; a missing or empty suite fails |
-| Live deployment | https://consent-gate.onrender.com/ — page 200; DE child → `parental_consent`; GB create → 409; client-supplied date → 400 |
+| Live deployment | `https://consent-gate.onrender.com/` (page 200; DE child → `parental_consent`; GB create → 409; client-supplied date → 400) |
 | Deliverable | the repository plus the live demo |
 
 Milestones and their review outcomes are in the log above.
