@@ -9,6 +9,7 @@ The implementation tool and implementation-specific observations will be added w
 - Converted open requirements into explicit policy, consent, API, UI, and test contracts.
 - Compared the proposed design with an earlier implementation and retained useful demo and testing ideas without copying its client-side policy logic or production claims.
 - Checked consistency across the design, deployment workflow, and reviewer-facing documents.
+- Established the implementation working method recorded in `AGENTS.md`: a primary agent owns contracts and integration; independent read-only agents cover orthogonal review angles; each milestone ends with focused tests, an adversarial reviewer using a different angle from the previous round, a failing test for each accepted defect, and a mutation check for each new safety rule. Results are recorded in the review log below.
 
 ## Corrections and discarded output
 
@@ -20,6 +21,14 @@ The implementation tool and implementation-specific observations will be added w
 | Re-evaluating eligibility before looking up an existing request could reject a retry after approval | Defined existing-scope lookup before new-request eligibility evaluation |
 
 A local verification also failed because a stale `.next` cache referenced routes absent from the starter. I removed the generated cache and reran the build cleanly; this was an environment issue, not accepted application behavior.
+
+## Per-milestone review log
+
+One row per milestone, added when the milestone closes, as required by the per-milestone review protocol in `AGENTS.md`. Keep entries factual and short.
+
+| Milestone | AI output | Adversarial review angle | Findings fixed | Tests added or strengthened |
+|---|---|---|---|---|
+| | | | | |
 
 ## Current verification
 

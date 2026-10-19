@@ -24,6 +24,25 @@ Good uses of independent agents include:
 
 Do not use parallel writers for shared domain contracts, service composition, dependent API/UI work, or final integration fixes. When parallel writing is justified, assign disjoint files and rejoin through the primary agent.
 
+### Parallelism decision
+
+Before launching agents, decide whether parallel work is worth its coordination cost:
+
+- Trivial work, such as a short edit, a single file, or a repair, stays with the primary agent and is not parallelized.
+- Split only independent work along orthogonal angles: backend / frontend / tests, or read code / run an experiment / check documentation. If one angle is a subset of another, drop it.
+- One angle per agent. Launch independent angles concurrently; serialize work that has dependencies.
+- Cap concurrent agents at five. More agents than distinct angles adds cost without coverage.
+
+### Agent briefing and independence
+
+Every delegated prompt must stand alone. State the goal and why it matters, give file paths and what has already been tried or ruled out, define the expected output, and say whether the agent may write files or is read-only. Agents must not depend on another agent's unfinished output.
+
+A sub-agent report is a claim, not evidence. The primary agent verifies any claim that would change a decision before relying on it.
+
+### Background work
+
+Long-running commands, agent runs, and large reads run in the background so the conversation stays responsive. State the plan first, then process results when they arrive. Large outputs are written to a results file and referenced by path plus a one-line summary.
+
 ## Review protocol
 
 A read-only reviewer must:
@@ -33,6 +52,17 @@ A read-only reviewer must:
 3. avoid modifying files unless explicitly reassigned as a writer.
 
 For each accepted defect, the primary agent reproduces it with a failing test, makes the smallest correction, and reruns the relevant regression tests. Sub-agent output is advisory until the primary agent and human owner review it.
+
+## Per-milestone verification and adversarial review
+
+Every milestone ends with the same four obligations, recorded as one row in the review log in `AI-USE.md`:
+
+1. **Tests for the rules the milestone introduced**, including edge cases rather than only the happy path. For this project those include age boundaries (the day before, on, and after a birthday, plus February 29), rule precedence with shuffled input, jurisdiction normalization, hard-block protection, and consent-scope isolation.
+2. **A read-only adversarial reviewer agent**, run after the focused tests pass. Give it an angle that differs from the previous round, for example: derive expected age behavior from the brief, attack the API contract, or hunt for unhandled failure paths. It must derive expected behavior before reading the implementation and report evidence-backed gaps only.
+3. **A failing test first for every accepted defect**, then the smallest correction, then the relevant regression run.
+4. **A mutation check for each new safety rule**: deliberately break the branch that enforces it and confirm at least one test fails. A rule whose removal turns nothing red is documentation, not a guard.
+
+Rejected reviewer suggestions are recorded with the reason. Do not repeat the same review angle in consecutive rounds.
 
 ## Working protocol
 
