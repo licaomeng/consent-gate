@@ -297,3 +297,28 @@ test("clears the previous decision when the input changes", async ({ page }) => 
 
   await expect(page.getByTestId("decision")).toHaveCount(0);
 });
+
+test.describe("phone viewport", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("stacks the panels without horizontal overflow", async ({ page }) => {
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    const child = await page.getByRole("heading", { name: "Check feature access" }).boundingBox();
+    const parent = await page.getByRole("heading", { name: "Parent decisions" }).boundingBox();
+    expect(child).not.toBeNull();
+    expect(parent).not.toBeNull();
+    expect(child!.y).toBeLessThan(parent!.y);
+
+    await page.getByTestId("help-demo-cases").focus();
+    const tip = page.getByTestId("tooltip-demo-cases");
+    await expect(tip).toHaveCSS("opacity", "1");
+    const box = await tip.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  });
+});

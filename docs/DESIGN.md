@@ -417,7 +417,7 @@ Each risk is tested at the narrowest useful layer. Tests pin the evaluation date
 
 Current: 98.62% statements, 95.5% branches, 100% functions, 98.94% lines. The remaining branches are defensive paths the API cannot reach: an inconsistent repository index, a missing record on the repository write path, and an out-of-range month fallback. Manufacturing state to cover them would test the test, not the product.
 
-Coverage is a diagnostic, not a target. The guards are the mutation checks for safety rules and the Playwright journeys for wiring. A high percentage with a vacuous assertion is still a weak suite.
+Coverage is a diagnostic, not a target. The guards are the mutation checks for safety rules, including the M5 tooltip, live-region, and display-id checks, and the Playwright journeys for wiring. A high percentage with a vacuous assertion is still a weak suite.
 
 ### Highest-risk cases
 

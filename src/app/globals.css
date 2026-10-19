@@ -757,6 +757,17 @@ code {
     padding: 20px;
   }
 
+  .help-tip .help-tip-content {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    top: auto;
+    width: auto;
+    max-width: none;
+    transform: none;
+  }
+
   .decision-actions .primary {
     width: 100%;
   }

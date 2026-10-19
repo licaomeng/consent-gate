@@ -95,7 +95,7 @@ flowchart LR
 
 ## Per-milestone verification and adversarial review
 
-Every planned implementation milestone (M1–M4) ends with the same four obligations, recorded as one row in the review log in [`AI-USE.md`](AI-USE.md). M5 recorded focused tests and findings but added no new mutation script.
+Every planned implementation milestone (M1–M4) ends with the same four obligations, recorded as one row in the review log in [`AI-USE.md`](AI-USE.md). M5 recorded focused tests and findings; its tooltip, live-region, and display-id guards are covered by [`tools/mutation-check-m5.sh`](tools/mutation-check-m5.sh).
 
 1. **Tests for the rules the milestone introduced**, including edge cases: age boundaries and February 29, shuffled-rule precedence, jurisdiction normalization, rejected client dates, hard blocks, and consent-scope isolation.
 2. **A read-only adversarial reviewer agent**, after focused tests pass. Give it an angle different from the previous round: expected behavior from the brief, the API contract, or unhandled failure paths. It derives expected behavior before reading the implementation, reports evidence-backed gaps only, and stays advisory until the primary agent and human verify it.
