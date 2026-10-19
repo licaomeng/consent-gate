@@ -78,7 +78,12 @@ export function loadPolicy(input: unknown): Policy {
     };
   });
 
-  return { features: [...features], rules: loadedRules };
+  // Freeze the loaded policy: it becomes a shared singleton in M2, and a
+  // downstream mutation of a result must never change later decisions.
+  const frozenFeatures = Object.freeze([...features]);
+  const frozenRules = Object.freeze(loadedRules.map((rule) => Object.freeze(rule)));
+
+  return Object.freeze({ features: frozenFeatures, rules: frozenRules });
 }
 
 export function buildLookupPath(jurisdiction: string): string[] {
@@ -100,7 +105,11 @@ export function resolveRule(
   feature: string,
   jurisdiction: string,
 ): { rule: PolicyRule | null; lookupPath: string[] } {
-  const candidates = buildLookupPath(jurisdiction);
+  // Normalize at THIS boundary too. A caller that skips parseScenario must not
+  // be able to match a raw `gb` against the wildcard while the `GB` hard block
+  // sits unused. Malformed input is rejected, never silently passed through.
+  const normalizedJurisdiction = normalizeJurisdiction(jurisdiction);
+  const candidates = buildLookupPath(normalizedJurisdiction);
   const lookupPath: string[] = [];
 
   for (const candidate of candidates) {

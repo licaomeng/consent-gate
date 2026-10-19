@@ -79,6 +79,37 @@ describe("evaluateDecision", () => {
     expect(result.matchedRule?.jurisdiction).toBe("GB");
   });
 
+  it("does not let a raw lowercase jurisdiction bypass a hard block", () => {
+    // This scenario is intentionally NOT passed through parseScenario: the
+    // domain boundary must normalize on its own.
+    const result = evaluateDecision({
+      scenario: {
+        subjectId: "subject-1",
+        dateOfBirth: "2016-01-01",
+        jurisdiction: "gb",
+        feature: "chat",
+      },
+      policy,
+      evaluationDate,
+      consentStatus: "approved",
+    });
+
+    expect(result.decision).toBe("blocked");
+    expect(result.reason).toBe("under_minimum_age");
+    expect(result.matchedRule?.jurisdiction).toBe("GB");
+  });
+
+  it("returns a copy of the matched rule, so a result cannot mutate the policy", () => {
+    const result = evaluateDecision({ scenario: scenarioFor(), policy, evaluationDate });
+    const policyRule = policy.rules.find(
+      (rule) => rule.jurisdiction === "DE" && rule.feature === "chat",
+    );
+
+    expect(result.matchedRule).not.toBe(policyRule);
+    (result.matchedRule as { minAge: number }).minAge = 0;
+    expect(policyRule?.minAge).toBe(16);
+  });
+
   it("falls back from an unlisted subdivision to the country", () => {
     const result = evaluateDecision({
       scenario: scenarioFor({ dateOfBirth: "2014-01-01", jurisdiction: "US-NY" }),

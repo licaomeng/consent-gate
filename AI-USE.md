@@ -2,7 +2,7 @@
 
 I used OpenAI Codex to analyze the brief, compare this starter with an earlier practice implementation, challenge design assumptions, and edit the documentation. I chose the product semantics, reviewed the diffs and verification output, rejected unsupported claims, and remain responsible for the submission.
 
-The implementation tool and implementation-specific observations will be added when coding begins.
+M1 was implemented with Claude Code as the primary agent, with a separate read-only adversarial reviewer sub-agent run after the first implementation.
 
 ## Material contributions
 
@@ -28,17 +28,17 @@ One row per milestone, added when the milestone closes, as required by the per-m
 
 | Milestone | AI output | Adversarial review angle | Findings fixed | Rejected or discarded | Tests added or strengthened |
 |---|---|---|---|---|---|
-| M1 Domain core | Types, policy loader and precedence, calendar age, scenario validation, decision evaluator, and consent state machine; 61 unit tests across 5 files. | Derived age, precedence, fail-closed, and consent expectations from the brief before reading the implementation. | No true defects. Added missing coverage: subdivision → country fallback (`US-NY`), unknown-country wildcard match (`FR`), consent adjacency (minimum age met with a declined consent, hard block under every state, `no_matching_policy` with approval), and a decision-level February 29 transition. | Suggested moving future-DOB validation into `parseScenario`; rejected because it needs the evaluation date and `calculateAge` already enforces it on every path. | 52 → 61 tests. Mutation checks: removed the hard-block guard, removed jurisdiction uppercasing, relaxed the strict request shape — all three turned tests red. |
+| M1 Domain core | Types, policy loader and precedence, calendar age, scenario validation, decision evaluator, and consent state machine; 67 unit tests across 5 files. | First pass: derived age, precedence, fail-closed, and consent expectations from the brief before reading the implementation. Second pass: attacked the boundary between parsing and evaluation. | First pass found no true defects; added missing coverage (subdivision → country fallback, unknown-country wildcard, consent adjacency, decision-level February 29). Second pass found: `resolveRule` trusted pre-normalized input, so a raw lowercase `gb` could skip the GB hard block; the frozen-policy/matchedRule reference could be mutated; dates before 1900 were accepted. Fixed all three. | Suggested moving future-DOB validation into `parseScenario`; rejected because it needs the evaluation date and `calculateAge` already enforces it on every path. The second reviewer could not reproduce the build/mutation claims because its sandbox denied writes; that was treated as an environment limitation, not evidence against the recorded results. | 52 → 67 tests. Mutation checks: removed the hard-block guard, removed jurisdiction uppercasing, relaxed the strict request shape, and removed normalization inside `resolveRule` — all four turned tests red. |
 
 ## Current verification
 
 ```text
 Product implementation: M1 domain core complete; services, HTTP routes, and UI not started
-Vitest: 61 tests passing across 5 domain test files
+Vitest: 67 tests passing across 5 domain test files
 Next.js production build: passed (Next.js 16.4.0, TypeScript check included)
 Playwright: no product tests yet; starter empty-suite allowance active
 npm run verify: not yet run for a product increment (the E2E suite is still empty)
 Public URL: not yet verified
 ```
 
-Before submission, I will record the implementation tool, material generated work, rejected output, corrections, final commit, test results, and deployed URL. Empty-suite allowances will be removed.
+Before submission, I will record the final commit, test results, and deployed URL. Empty-suite allowances will be removed.

@@ -100,6 +100,18 @@ describe("loadPolicy", () => {
 
     expectValidationError(() => loadPolicy(invalid));
   });
+
+  it("freezes the loaded policy so a shared singleton cannot be mutated", () => {
+    const policy = loadPolicy(briefPolicyJson);
+
+    expect(Object.isFrozen(policy)).toBe(true);
+    expect(Object.isFrozen(policy.features)).toBe(true);
+    expect(Object.isFrozen(policy.rules)).toBe(true);
+    expect(policy.rules.every((rule) => Object.isFrozen(rule))).toBe(true);
+    expect(() => {
+      (policy.rules[0] as unknown as { minAge: number }).minAge = 0;
+    }).toThrow(TypeError);
+  });
 });
 
 describe("normalizeJurisdiction", () => {
@@ -157,6 +169,20 @@ describe("rule resolution", () => {
 
     expect(result.rule).toBeNull();
     expect(result.lookupPath).toEqual(["ZZ", "*"]);
+  });
+
+  it("normalizes the jurisdiction at the resolution boundary", () => {
+    // A caller that skips parseScenario must still hit the GB hard block, not
+    // fall through to the wildcard consent rule.
+    const result = resolveRule(policy, "chat", "gb");
+
+    expect(result.rule?.jurisdiction).toBe("GB");
+    expect(result.rule?.ifUnder).toBe("blocked");
+    expect(result.lookupPath).toEqual(["GB"]);
+  });
+
+  it("rejects a malformed jurisdiction at the resolution boundary", () => {
+    expectValidationError(() => resolveRule(policy, "chat", "g!"));
   });
 
   it("does not depend on file order", () => {

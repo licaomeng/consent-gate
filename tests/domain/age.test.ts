@@ -27,6 +27,12 @@ describe("parseCalendarDate", () => {
       expectValidationError(() => parseCalendarDate(value, "dateOfBirth"));
     }
   });
+
+  it("rejects implausibly old dates that would satisfy every age threshold", () => {
+    for (const value of ["0000-01-01", "1800-01-01", "1899-12-31"]) {
+      expectValidationError(() => parseCalendarDate(value, "dateOfBirth"));
+    }
+  });
 });
 
 describe("calculateAge", () => {

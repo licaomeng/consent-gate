@@ -238,7 +238,7 @@ Errors use `{ "error": { "code": string, "message": string } }`. Reason codes ex
 
 | Status | Code | Use |
 |---:|---|---|
-| `400` | `validation_error` | Malformed JSON, invalid date or jurisdiction, missing field, unknown feature, client-supplied evaluation date, invalid status |
+| `400` | `validation_error` | Malformed JSON, invalid/implausible/future date, invalid jurisdiction, missing field, unknown feature, client-supplied evaluation date, invalid status |
 | `404` | `request_not_found` | Consent request ID does not exist |
 | `409` | `consent_not_required` | Current policy does not permit creating a consent request |
 | `503` | `dependency_unavailable` | Required consent state cannot be read or written safely |

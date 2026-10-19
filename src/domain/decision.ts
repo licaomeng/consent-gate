@@ -27,7 +27,9 @@ export function evaluateDecision(input: DecisionInput): DecisionResult {
     age,
     evaluatedAt: evaluationDate,
     lookupPath,
-    matchedRule: rule,
+    // Return a copy: the policy is shared and frozen, so a caller mutating a
+    // result must not be able to reach the rule object behind it.
+    matchedRule: rule ? { ...rule } : null,
     consentRequestId: input.consentRequestId,
   };
 

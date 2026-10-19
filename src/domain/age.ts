@@ -8,6 +8,10 @@ export type CalendarDate = {
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+// A nonsensical DOB (e.g. 0000-01-01) would satisfy every age threshold.
+// 1900 is a deliberately conservative lower bound, recorded in DECISIONS.md.
+const MIN_PLAUSIBLE_YEAR = 1900;
+
 function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
@@ -29,6 +33,12 @@ export function parseCalendarDate(value: string, field: string): CalendarDate {
 
   if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
     throw validationError(`${field} must be a real YYYY-MM-DD calendar date`);
+  }
+
+  if (year < MIN_PLAUSIBLE_YEAR) {
+    throw validationError(
+      `${field} must be a plausible calendar date (year ${MIN_PLAUSIBLE_YEAR} or later)`,
+    );
   }
 
   return { year, month, day };

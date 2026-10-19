@@ -67,6 +67,9 @@ describe("parseScenario", () => {
     expectValidationError(() =>
       parseScenario({ ...validScenario, dateOfBirth: "2015-02-30" }, policy),
     );
+    expectValidationError(() =>
+      parseScenario({ ...validScenario, dateOfBirth: "0000-01-01" }, policy),
+    );
 
     const { dateOfBirth: _omitted, ...withoutDate } = validScenario;
     expectValidationError(() => parseScenario(withoutDate, policy));
