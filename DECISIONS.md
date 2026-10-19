@@ -69,6 +69,19 @@ Policy decisions remain on the server. The page receives a display-safe policy m
 
 Policy and age rules will be tested as pure units, consent behavior through services and the real in-memory repository, HTTP mapping at route boundaries, and a few critical journeys in Playwright. Each demo preset will also be evaluated against the real engine so presentation metadata cannot drift from behavior.
 
+## Skipped for time
+
+The exercise explicitly permits an in-memory implementation. These are the deliberate omissions, not claims of completeness:
+
+- A verified public deployment URL. The repository is the deliverable; the Render pipeline exists, but the deployed revision is not verified.
+- Durable storage, migrations, cross-instance consistency, and concurrency control for opposing writes.
+- Authentication, guardian verification, and authorization. The parent panel uses a trusted demo identity.
+- Immutable audit history, policy administration, consent expiry, and re-consent.
+- Rate limiting and abuse controls on the consent lookup endpoints.
+- Localization and jurisdiction data beyond the supplied rule set.
+
+The README records the same boundaries under Known limitations.
+
 ## Open production questions
 
 - When does consent expire, and which policy changes require re-consent?

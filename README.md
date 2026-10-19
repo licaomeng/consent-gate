@@ -4,7 +4,7 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject's date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** the planned implementation milestones are delivered (the domain core, the services and `/api/v1` routes, the single-page consent workflow, and verification), followed by one user-review round (M5) for UX and accessibility, including a follow-up pass that hardened ids, live regions, tooltips, and timestamps. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys; coverage is reported by `npm run test:coverage`. The public deployment URL is pending.
+> **Current state:** the planned implementation milestones are delivered (the domain core, the services and `/api/v1` routes, the single-page consent workflow, and verification), followed by one user-review round (M5) for UX and accessibility, including a follow-up pass that hardened ids, live regions, tooltips, and timestamps. `npm run verify` runs 172 Vitest tests, a production build, and 19 Playwright journeys; coverage is reported by `npm run test:coverage`. The repository is the deliverable; an optional public deployment is pending.
 
 ## At a glance
 
@@ -70,7 +70,7 @@ Required GitHub configuration:
 
 In-memory consent resets after restart, redeployment, or service sleep.
 
-**Live application:** pending deployment of the reviewed commit.
+**Deliverable:** the repository is the submission. Latest verified code commit `57acc25`; the documentation changes around it follow in a later commit. An optional Render deployment is pending.
 
 ## Known limitations
 
@@ -86,6 +86,6 @@ In-memory consent resets after restart, redeployment, or service sleep.
 - [x] The complete child-to-parent journey works (19 Playwright journeys, including approve, decline, reversal, the API error contract, and the UX/accessibility checks).
 - [x] Empty-suite allowances are removed and `npm run verify` passes.
 - [x] README capabilities match the delivered code.
-- [ ] The reviewed commit is the deployed commit (`d013796` is pushed; Render deployment pending).
+- [x] The repository is the deliverable; the optional Render deployment is pending (`57acc25` code; documentation follows).
 - [x] `DECISIONS.md` and `AI-USE.md` contain final, factual information.
 - [x] Known limitations and unfinished work are explicit.

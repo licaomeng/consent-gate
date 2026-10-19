@@ -4,6 +4,13 @@ I used OpenAI Codex to analyze the brief, compare this starter with an earlier p
 
 Implementation milestones M1–M4 were produced with Claude Code as the primary agent, with a separate read-only adversarial reviewer sub-agent for each milestone.
 
+## TL;DR
+
+- **Tools:** OpenAI Codex for brief analysis, design challenge, and documentation review; Claude Code for implementation, tests, and one read-only adversarial reviewer sub-agent per milestone.
+- **Errors caught and fixed:** a design claim that E2E gated deployment while CI ran only coverage and build; reused requests documented as always `pending`; fixed-date demo presets that drifted from the engine; cross-bundle `instanceof` turning 409/400 into 500 in production; two live regions announcing the same status twice.
+- **Discarded:** editable subject identity, colour-only status, client-side policy evaluation, and removing the globalThis container singleton (it would reintroduce HMR state loss).
+- **Evidence:** the per-milestone log below; 172 Vitest tests, 19 Playwright journeys, 8/8 HTTP smoke, and 23 mutation checks across M1–M3.
+
 ## Material contributions
 
 - Converted open requirements into explicit policy, consent, API, UI, and test contracts.
@@ -127,7 +134,7 @@ All findings came from the user's front-end review, checked against the earlier 
 ## Current verification
 
 ```text
-Product implementation: M1 domain core complete ([`4c504ec`](https://github.com/licaomeng/consent-gate/commit/4c504ec), hardened in [`9d137a1`](https://github.com/licaomeng/consent-gate/commit/9d137a1)); M2 services and HTTP routes complete ([`16f130d`](https://github.com/licaomeng/consent-gate/commit/16f130d), review fixes in [`ccbc854`](https://github.com/licaomeng/consent-gate/commit/ccbc854)); M3 page and E2E complete ([`dfe27ed`](https://github.com/licaomeng/consent-gate/commit/dfe27ed), second-review fixes in [`d8bc9be`](https://github.com/licaomeng/consent-gate/commit/d8bc9be)); M4 verification complete ([`a409eab`](https://github.com/licaomeng/consent-gate/commit/a409eab), review fixes in [`d013796`](https://github.com/licaomeng/consent-gate/commit/d013796))
+Product implementation: M1 domain core complete ([`4c504ec`](https://github.com/licaomeng/consent-gate/commit/4c504ec), hardened in [`9d137a1`](https://github.com/licaomeng/consent-gate/commit/9d137a1)); M2 services and HTTP routes complete ([`16f130d`](https://github.com/licaomeng/consent-gate/commit/16f130d), review fixes in [`ccbc854`](https://github.com/licaomeng/consent-gate/commit/ccbc854)); M3 page and E2E complete ([`dfe27ed`](https://github.com/licaomeng/consent-gate/commit/dfe27ed), second-review fixes in [`d8bc9be`](https://github.com/licaomeng/consent-gate/commit/d8bc9be)); M4 verification complete ([`a409eab`](https://github.com/licaomeng/consent-gate/commit/a409eab), review fixes in [`d013796`](https://github.com/licaomeng/consent-gate/commit/d013796)); M5 UX and accessibility complete ([`34ac844`](https://github.com/licaomeng/consent-gate/commit/34ac844), review fixes in [`57acc25`](https://github.com/licaomeng/consent-gate/commit/57acc25))
 Vitest: 172 tests passing across 14 test files
 Coverage: 98.62% statements, 95.5% branches, 100% functions
 Playwright: 19 journeys passing (consent loop, hard block, coverage gap, precedence, preset hint, selected state + expected/actual, help tooltips, lowercase scope, unreadable state, failed refresh, input lock, live progress, input change clears results, API 409/400/404)
@@ -135,7 +142,7 @@ Next.js production build: passed; the page is dynamic and all four `/api/v1` ope
 HTTP smoke: 8/8 checks via `tools/http-smoke.sh` against `next start` (evaluate, create, reuse, approve, re-evaluate, list, hard block, client date rejection)
 npm run verify: passed with non-empty suites (172 tests + production build + 19 Playwright journeys)
 Empty-suite allowances: removed; an empty or missing suite now fails the command
-Public URL: not yet verified (deployment pending)
+Deliverable: the repository (latest verified code commit [`57acc25`](https://github.com/licaomeng/consent-gate/commit/57acc25)); deployment is optional and pending
 ```
 
-Final reviewed commit: [`d013796`](https://github.com/licaomeng/consent-gate/commit/d013796). Deployment: pending; the public URL is added after the Render deployment of that revision is verified.
+Latest verified code commit: [`57acc25`](https://github.com/licaomeng/consent-gate/commit/57acc25). This documentation update is not yet committed. Deployment is optional and pending; the repository is the deliverable.
