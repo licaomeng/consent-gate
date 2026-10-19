@@ -14,6 +14,20 @@ Given a subject id, date of birth, jurisdiction, and requested feature, the serv
 - **Safety boundary:** consent may satisfy a consent-eligible rule, but it never overrides a hard block.
 - **Source of truth:** the server validates and evaluates the exercise policy in [`src/data/policy.json`](src/data/policy.json); the browser displays the result and its evidence.
 - **Scope:** one Next.js app and an in-memory store. Durable identity, storage, audit, and concurrency are documented, not claimed.
+- **Worked examples:** `2015-03-01` / `DE` / `chat` → **Needs parental consent**; `1990-06-15` / `US` / `purchases` → **Allowed**.
+
+## API
+
+All routes are under `/api/v1`.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/decisions` | Evaluate access; read-only |
+| `POST` | `/api/v1/consent-requests` | Create or reuse a request |
+| `GET` | `/api/v1/consent-requests?subjectId=...` | List requests for a subject |
+| `PATCH` | `/api/v1/consent-requests/:id` | Approve, decline, or reverse |
+
+`POST /api/v1/decisions` takes `subjectId`, `dateOfBirth`, `jurisdiction`, and `feature`, and returns the decision, reason, age, evaluation date, lookup path, and matched rule. The evaluation date is server-owned; sending one is a `400`.
 
 ## Review path
 
@@ -51,7 +65,7 @@ npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). For the production build, run `npm run build && npm start`.
 
 ## Verify
 
@@ -78,6 +92,8 @@ bash tools/mutation-check-m3.sh  # UI mutations (rebuilds and runs Playwright)
 
 ## Deployment
 
+**Live application:** https://consent-gate.onrender.com/ on Render. Its in-memory state is shared by visitors to the same instance.
+
 GitHub Actions verifies a pushed revision before asking Render to deploy that commit. Render uses `/` as its service health check. Auto-deploy is disabled so the same push is not deployed twice.
 
 Required GitHub configuration:
@@ -86,10 +102,9 @@ Required GitHub configuration:
 - variable: `RENDER_SERVICE_URL`;
 - environment: `production`.
 
-**Live application:** https://consent-gate.onrender.com/ on Render. Its in-memory state is shared by visitors to the same instance.
-
 ## Known limitations
 
 - State is in memory: it resets on restart, redeploy, or service sleep, and is not shared across instances.
 - Authentication and guardian verification are out of scope; the parent panel uses a trusted demo identity.
 - There is no immutable audit history, policy administration, expiry, or re-consent flow.
+- The policy is a file; changing it requires a redeploy and invalid policy stops startup.

@@ -42,11 +42,21 @@ erDiagram
     }
 ```
 
-`CONSENT_CURRENT` supports fast decisions. `CONSENT_EVENT` records who changed the state, when, and under which policy. Updating both belongs in one transaction. The final scope may also include product, purpose, guardian relationship, and expiry; those require product and legal decisions.
+`CONSENT_CURRENT` supports fast decisions. `CONSENT_EVENT` records who changed the state, when, and under which policy. Updating both belongs in one transaction. The final scope may also include product, purpose, guardian relationship, and expiry; those require product and legal decisions. The event table is append-only and access-controlled. If audit must be tamper-evident, chain event hashes or export signed batches. Retention and deletion rules apply to events as well as current state.
+
+## Migration and rollout
+
+Moving from the exercise to a durable store is a staged change, not a swap:
+
+- Create the schema with expand-only migrations and keep the application compatible with old and new columns during the rollout.
+- Backfill existing scopes, then shadow-read from PostgreSQL while the in-memory path still serves decisions.
+- Cut writes over behind a flag and keep a rollback path to the last known-good revision.
+- Reconcile counts and sampled records before deleting the old path.
+- Run restore drills; a backup that has never been restored is not a recovery plan.
 
 ## Idempotency and concurrent writes
 
-Business idempotency and request idempotency solve different problems. A unique scope plus transactional upsert prevents duplicate logical requests. An `Idempotency-Key` becomes useful when a retried command also emits events or sends notifications.
+Business idempotency and request idempotency solve different problems. A unique scope plus transactional upsert prevents duplicate logical requests. An `Idempotency-Key` becomes useful when a retried command also emits events or sends notifications. Scope the key to the actor and operation, store it with the response, and expire it after a bounded window; a retry with the same key returns the stored result instead of re-executing the command.
 
 Repeating `approve` on an approved request is harmless. Simultaneous `approve` and `decline` commands conflict and should use a version check:
 
@@ -71,11 +81,14 @@ The second parent must read the latest state and choose again. Silent last-write
 
 Current consent is consistency-sensitive. If storage is unavailable for a consent-eligible decision, withhold access and return an availability error; never grant access from an unverified stale approval. Analytics and notifications may be eventually consistent.
 
+Keep notifications off the enforcement path. If audit publication or notifications become asynchronous, use a transactional outbox so a committed parent action cannot lose its event.
+
 ## Policy lifecycle
 
 - Treat DOB as a calendar date and use one explicit evaluation date per decision. Store operational timestamps in UTC.
 - Give policies versions and effective dates; define whether a change invalidates existing consent.
 - Give every production rule a stable identifier for audit and telemetry.
+- Require review and approval for policy changes, validate them in staging, and roll out with a canary and a rollback plan.
 - Fail readiness when the startup policy is invalid. Reject an invalid replacement and continue serving the last known valid version.
 - Report the active policy version so drift between instances can be detected.
 - Model jurisdiction inheritance explicitly. The exercise's `subdivision → country → *` lookup must not be assumed to cover every legal hierarchy.
@@ -92,7 +105,7 @@ Consent validity over time is a product and legal decision, not a storage detail
 
 A policy version makes the original basis auditable. A version change should not automatically invalidate approvals; the policy owner defines compatibility rules for each change.
 
-Keep notifications off the enforcement path. If audit publication becomes asynchronous, use a transactional outbox so a committed parent action cannot lose its audit event.
+
 
 ## Trust and security boundary
 
@@ -111,10 +124,35 @@ flowchart LR
 
 In production, authentication establishes who the actor is; authorization separately proves that the actor may view or change consent for this subject and scope. Browser-provided identity, guardian claims, and subject attributes must be authenticated or verified before enforcement.
 
+Authorization is object-level: every read and write is checked against the authenticated actor's relationship to this subject and scope. Do not rely on unguessable IDs as the only control; rate-limit lookups and audit access.
+
+Guardian verification should match the risk: an identity or payment-card check, a signed invitation from a verified guardian, or step-up authentication for high-impact changes. Record the method and time, support multiple guardians, and define how their conflicting decisions are resolved.
+
 The browser may display decision evidence, but it never becomes an enforcement point. Policy, guardian relationships, and consent remain server-owned. DOB and consent history are sensitive data: minimize collection, keep them out of URLs and routine logs, restrict audit access, and define deletion and retention rules with legal and privacy owners.
+
+## Privacy and data lifecycle
+
+DOB and consent history identify a child. Production needs explicit rules, not best effort:
+
+- Minimize collection: derive age from DOB and avoid retaining raw DOB when a birth year or derived age is enough.
+- Keep PII out of URLs, logs, traces, and error messages.
+- Encrypt in transit and at rest; rotate keys and restrict decrypt access.
+- Define retention per data class; delete or anonymize on expiry and on a valid erasure request, subject to legal hold.
+- Support subject and guardian access and correction requests, and log who accessed audit data.
+- Separate duties: policy changes require an approver other than the author, and audit access is reviewed.
 
 ## Operations
 
 Decision telemetry should include request ID, policy version, stable rule identifier, outcome, reason, latency, and error category, without raw DOB. Monitor decision failures, `no_matching_policy`, consent completion, stale-version conflicts, storage failures, and policy-version drift.
 
 Deployment should preserve a last known-good revision. Liveness confirms that the process runs; readiness confirms that required policy and storage are available. The take-home deployment proves only that its tested path builds, starts, and responds.
+
+Production operations also need:
+
+- SLOs and alerts for decision latency and errors, consent completion, stale-version conflicts, storage failures, and policy-version drift.
+- Backups with a defined RPO and RTO, plus regular restore drills and a documented rollback path.
+- Rate limits and per-actor quotas on lookup and write endpoints.
+- Key rotation, secret management, and access reviews for policy and consent data.
+- Runbooks for a storage outage, a policy rollback, and a suspected guardian-account compromise.
+- Load and failover testing; multi-region only with an explicit consistency model.
+- A versioned API with a deprecation window and stable reason and status codes.

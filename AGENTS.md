@@ -34,9 +34,7 @@ flowchart LR
     N -- Yes --> O[Commit and next milestone]
 ```
 
-Independent work may run in parallel, but the primary agent owns contracts, integration, and the final diff.
-
-The diagram covers the planned implementation milestones (M1–M4). M5 was a user-review round: it followed the same test and documentation steps without a new adversarial reviewer or mutation script.
+One milestone at a time. Independent work may run in parallel, but the primary agent owns contracts, integration, and the final diff. The diagram covers M1–M4; M5 was a user-review round with the same tests and documentation, but no new adversarial reviewer or mutation script.
 
 ## Delegation boundary
 
@@ -62,7 +60,14 @@ Before launching agents, decide whether parallel work is worth its coordination 
 
 ### Agent briefing and independence
 
-Every delegated prompt must stand alone. State the goal and why it matters, give file paths and what has already been tried or ruled out, define the expected output, and say whether the agent may write files or is read-only. Agents must not depend on another agent's unfinished output.
+Every delegated prompt must stand alone:
+
+- goal, and why it matters;
+- file paths and prior attempts;
+- expected output;
+- whether the agent may write or is read-only.
+
+Agents must not depend on another agent's unfinished output.
 
 A sub-agent report is a claim, not evidence. The primary agent verifies any claim that would change a decision before relying on it.
 
@@ -92,8 +97,8 @@ flowchart LR
 
 Every planned implementation milestone (M1–M4) ends with the same four obligations, recorded as one row in the review log in [`AI-USE.md`](AI-USE.md). M5 recorded focused tests and findings but added no new mutation script.
 
-1. **Tests for the rules the milestone introduced**, including edge cases rather than only the happy path. For this project those include age boundaries (the day before, on, and after a birthday, plus February 29), rule precedence with shuffled input, jurisdiction normalization, rejection of a client-supplied evaluation date, hard-block protection, and consent-scope isolation.
-2. **A read-only adversarial reviewer agent**, run after the focused tests pass. Give it an angle that differs from the previous round, for example: derive expected age behavior from the brief, attack the API contract, or hunt for unhandled failure paths. It is read-only unless reassigned as a writer, derives expected behavior before reading the implementation, and reports evidence-backed gaps only. Its output is advisory until the primary agent and human verify it.
+1. **Tests for the rules the milestone introduced**, including edge cases: age boundaries and February 29, shuffled-rule precedence, jurisdiction normalization, rejected client dates, hard blocks, and consent-scope isolation.
+2. **A read-only adversarial reviewer agent**, after focused tests pass. Give it an angle different from the previous round: expected behavior from the brief, the API contract, or unhandled failure paths. It derives expected behavior before reading the implementation, reports evidence-backed gaps only, and stays advisory until the primary agent and human verify it.
 3. **A failing test first for every accepted defect**, then the smallest correction, then the relevant regression run.
 4. **A mutation check for each new safety rule**: deliberately break the branch that enforces it and confirm at least one test fails. A rule whose removal turns nothing red is documentation, not a guard. M4's structural error classification is covered by mutation M in [`tools/mutation-check-m2.sh`](tools/mutation-check-m2.sh).
 
@@ -101,16 +106,13 @@ Rejected reviewer suggestions are recorded with the reason. Do not repeat the sa
 
 ## Working protocol
 
-- Group work into reviewable changes and do not silently expand the scope.
-- Derive tests from requirements and invariants, not only from generated code.
-- After each material change, run focused verification and inspect the diff.
-- Keep commit boundaries aligned with meaningful capabilities or corrections.
-- Never add credentials, secrets, or local configuration to the repository.
-- Update [`DECISIONS.md`](DECISIONS.md) when a selected design changes, including the reason.
-- Update [`AI-USE.md`](AI-USE.md) only with material events that actually occurred.
-- Keep commit hashes, verification results, and deployed-revision claims factual.
-- If the brief and `DECISIONS.md` do not resolve a product decision, stop and surface the ambiguity; do not invent semantics.
-- A green build is not proof of business correctness; a milestone is complete only after diff review and focused verification.
+- **Scope.** Group work into reviewable changes; after each material change, run focused verification and inspect the diff.
+- **Tests.** Derive tests from requirements and invariants, not only from generated code.
+- **Commits.** Keep commit boundaries aligned with meaningful capabilities or corrections; keep hashes, verification results, and deployed-revision claims factual.
+- **Docs.** Update [`DECISIONS.md`](DECISIONS.md) when a design changes, [`AI-USE.md`](AI-USE.md) only for material events, and reconcile both with the delivered behavior.
+- **Safety.** Never add credentials, secrets, or local configuration to the repository.
+- **Ambiguity.** If the brief and `DECISIONS.md` do not resolve a product decision, stop and surface it; do not invent semantics.
+- **Done.** A green build is not proof of business correctness; a milestone is complete only after diff review and focused verification.
 
 ## Commands
 
@@ -119,7 +121,8 @@ npm ci
 npm run dev
 npm run test:run
 npm run build
-npm run test:e2e       # needs a prior npm run build and a one-time npx playwright install chromium
+npx playwright install chromium   # once
+npm run test:e2e
 npm run verify
 ```
 

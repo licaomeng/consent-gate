@@ -313,14 +313,14 @@ During a request, the relevant action is disabled. Recoverable errors preserve t
 ### Accessibility
 
 - Use native controls with programmatic labels; every input and select has a visible label.
-- Demo cases are buttons; the selected case exposes `aria-pressed`, and its expected outcome is visible text, never colour alone.
+- Demo cases are buttons; the selected case exposes `aria-pressed`, and its expected outcome is visible text, never color alone.
 - A single always-mounted, visually hidden polite live region announces the decision and request status; progress uses `role="status"`. The visible parent status badge is not a live region, and after a parent action the request status and fresh decision are committed in one render so the announcement never describes a mixed state.
 - Colour is supplementary: every decision and status also carries text and its stable reason or status code.
 - Keyboard operation and a visible focus ring are required; the active action and scenario inputs are disabled while a request is in flight.
 - Errors use `role="alert"`; the policy table has a caption and column headers.
 - On narrow screens the child panel precedes the parent panel.
 - Decision cards use layers with decreasing emphasis: outcome headline and explanation; request status when a request exists; evidence list; demo check; then the next action.
-- Tag and status text meets WCAG AA contrast (4.5:1) and is at least 0.72rem; colour is never the only signal.
+- Tag and status text meets WCAG AA contrast (4.5:1) and is at least 0.72rem; color is never the only signal.
 - The parent panel lists other consent scopes for the same subject, and **New subject** resets the synthetic identity without touching the server.
 - Key controls expose an inline help button placed immediately beside the control it explains: a focusable trigger with `aria-describedby` and a `role="tooltip"` panel. It opens on hover or focus, is pinned open by a click (so touch users can open it), and closes on Escape or an outside press; this satisfies WCAG 1.4.13. A second click unpins it, but hover or focus keeps it visible until the pointer or focus leaves.
 - Request timestamps render as UTC inside `<time dateTime>` elements, not in the viewer's locale.
