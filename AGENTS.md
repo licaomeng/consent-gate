@@ -11,6 +11,33 @@ Before changing code, read:
 3. `docs/DESIGN.md`: intended architecture, behavior, and evidence.
 4. `CLAUDE.md`: project-level engineering constraints.
 
+## Workflow
+
+```mermaid
+flowchart TD
+    A[Read the brief, DECISIONS, DESIGN, and this contract] --> B[Scope one milestone and its verification]
+    B --> C[Implement the milestone and its focused tests]
+    C --> D[Run focused tests]
+    D --> E[Read-only adversarial reviewer with a new angle]
+    E --> F{Accepted findings?}
+    F -- Yes --> G[Add a failing test, then the smallest fix]
+    G --> H[Re-run focused and regression tests]
+    H --> E
+    F -- No --> I{New or changed safety rule?}
+    I -- Yes --> J[Mutation check: break the rule, expect red]
+    J --> K[Run the full verify ladder]
+    I -- No --> K
+    K --> L[Update AI-USE and reconcile the docs]
+    L --> M[Human reviews the diff and evidence]
+    M --> N{Approved?}
+    N -- No --> C
+    N -- Yes --> O[Commit at the boundary and start the next milestone]
+```
+
+One milestone at a time; human review is the gate. Independent work may run in parallel, but the primary agent owns contracts, integration, and the final diff. Rejected findings are recorded with the reason; do not repeat a review angle in consecutive rounds.
+
+The diagram covers the planned implementation milestones (M1–M4). M5 was a user-review round: it followed the same test and documentation steps without a new adversarial reviewer or mutation script.
+
 ## Delegation boundary
 
 Delegate only work that is independent, has a clear scope, relies on stable contracts, and can be reviewed before integration.

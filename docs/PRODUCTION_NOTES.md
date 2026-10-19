@@ -67,7 +67,7 @@ sequenceDiagram
     API-->>B: 409 stale_version
 ```
 
-The second parent must read the latest state and choose again. Silent last-write-wins is inappropriate for consent.
+The second parent must read the latest state and choose again. Silent last-write-wins is inappropriate for consent. `409 stale_version` is a production-specific code; the exercise uses `409 consent_not_required` for a different condition.
 
 Current consent is consistency-sensitive. If storage is unavailable for a consent-eligible decision, withhold access and return an availability error; never grant access from an unverified stale approval. Analytics and notifications may be eventually consistent.
 

@@ -1,6 +1,6 @@
 # Claude Code Instructions
 
-Follow [`AGENTS.md`](AGENTS.md) as the repository-wide collaboration contract.
+Follow [`AGENTS.md`](AGENTS.md) as the repository-wide collaboration contract. Its Workflow section diagrams the end-to-end loop: scope one milestone, implement with tests, adversarial review, fix, mutation check, verify, document, human review.
 
 Read the sources listed in `AGENTS.md` before changing code. When they do not resolve a product decision, identify the ambiguity instead of inventing semantics.
 
