@@ -555,10 +555,11 @@ export default function ConsentGatePage({
               </p>
               {decision ? (
                 <p className="muted" data-testid="parent-evidence">
-                  Current evaluation: age {decision.age}
+                  Age {decision.age} · Rule:{" "}
                   {decision.matchedRule
-                    ? ` · ${featureLabel(decision.matchedRule.feature)} · min ${decision.matchedRule.minAge} · ${humanizeCode(decision.matchedRule.ifUnder)}`
-                    : " · No matching rule"}
+                    ? `${featureLabel(decision.matchedRule.feature)} · min ${decision.matchedRule.minAge} · if under: ${humanizeCode(decision.matchedRule.ifUnder)}`
+                    : "No matching rule"}{" "}
+                  · evaluated {decision.evaluatedAt}
                 </p>
               ) : null}
               <p className="request-status-line">

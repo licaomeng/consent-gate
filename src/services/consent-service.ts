@@ -110,6 +110,9 @@ export class ConsentService {
     if (!normalized) {
       throw validationError("subjectId query parameter is required");
     }
+    if (normalized.length > 128) {
+      throw validationError("subjectId query parameter is too long");
+    }
 
     return this.repository.listBySubject(normalized);
   }

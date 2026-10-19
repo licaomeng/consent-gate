@@ -22,7 +22,7 @@ test("runs the full consent loop", async ({ page }) => {
   await expect(page.getByTestId("request-timestamps")).toContainText("UTC");
   await expect(page.getByTestId("reason")).toHaveText("parental_consent_pending");
   await expect(page.getByTestId("waiting")).toHaveText("Waiting for parent");
-  await expect(page.getByTestId("parent-evidence")).toContainText("age 11");
+  await expect(page.getByTestId("parent-evidence")).toContainText("Age 11");
   await expect(page.getByTestId("parent-evidence")).toContainText("min 16");
 
   await page.getByRole("button", { name: "Approve" }).click();
@@ -278,6 +278,20 @@ test.describe("API error contract", () => {
 
     expect(response.status()).toBe(400);
     expect((await response.json()).error.code).toBe("validation_error");
+  });
+
+  test("returns 413 for a body over the size limit", async ({ request }) => {
+    const response = await request.post("/api/v1/decisions", {
+      data: {
+        subjectId: "x".repeat(9000),
+        dateOfBirth: "2015-03-01",
+        jurisdiction: "DE",
+        feature: "chat",
+      },
+    });
+
+    expect(response.status()).toBe(413);
+    expect((await response.json()).error.code).toBe("payload_too_large");
   });
 
   test("returns 404 for an unknown consent request id", async ({ request }) => {

@@ -180,6 +180,18 @@ describe("/api/v1/consent-requests", () => {
     expect(body.requests[0].subjectId).toBe(childChat.subjectId);
   });
 
+  it("rejects a subjectId query parameter over the length limit", async () => {
+    const response = await getConsentRequests(
+      new Request(
+        `${BASE}/api/v1/consent-requests?subjectId=${"x".repeat(129)}`,
+      ),
+    );
+    const { status, body } = await read(response);
+
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("validation_error");
+  });
+
   it("requires subjectId", async () => {
     const response = await getConsentRequests(
       new Request(`${BASE}/api/v1/consent-requests`),

@@ -106,6 +106,21 @@ describe("readJson", () => {
     });
   });
 
+  it("rejects a declared content-length over the limit before reading", async () => {
+    const request = new Request("http://localhost/api/v1/decisions", {
+      method: "POST",
+      body: "{}",
+      headers: {
+        "content-type": "application/json",
+        "content-length": "9000",
+      },
+    });
+
+    await expect(readJson(request)).rejects.toMatchObject({
+      code: "payload_too_large",
+    });
+  });
+
   it("rejects a streamed body over the limit without a content-length header", async () => {
     const body = new ReadableStream({
       start(controller) {

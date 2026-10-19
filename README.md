@@ -6,7 +6,7 @@ A policy-driven access decision service with a parental-consent workflow.
 
 Given a subject id, date of birth, jurisdiction, and requested feature, the service returns `allowed`, `blocked`, or `parental_consent`. The demo generates the subject id; a production product would derive it from an authenticated profile. When policy permits consent, a parent can approve, decline, or later reverse the current decision.
 
-> **Current state:** all milestones are delivered. `npm run verify` runs 178 Vitest tests, a production build, and 20 Playwright journeys.
+> **Current state:** all milestones are delivered. `npm run verify` runs 180 Vitest tests, a production build, and 21 Playwright journeys.
 
 ## At a glance
 
@@ -70,10 +70,10 @@ Open [http://localhost:3000](http://localhost:3000). For the production build, r
 ## Verify
 
 ```bash
-npm run test:run       # 178 Vitest tests
+npm run test:run       # 180 Vitest tests
 npm run build          # production build of the page and the three /api/v1 route files (four operations)
 npx playwright install chromium   # once, before the browser journeys
-npm run test:e2e       # 20 Playwright journeys (run npm run build first)
+npm run test:e2e       # 21 Playwright journeys (run npm run build first)
 npm run verify         # coverage -> build -> E2E, the same stages CI runs
 ```
 

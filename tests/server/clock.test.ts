@@ -40,12 +40,25 @@ describe("getEvaluationDate", () => {
   it("uses the UTC calendar date when no override is set", () => {
     setEvaluationDate(null);
     setEnv(undefined, undefined);
-    vi.useFakeTimers();
+    class UtcOnlyDate extends Date {
+      constructor() {
+        super("2026-10-19T23:30:00.000Z");
+      }
+      getFullYear() {
+        return 2026;
+      }
+      getMonth() {
+        return 9;
+      }
+      getDate() {
+        return 20;
+      }
+    }
+    vi.stubGlobal("Date", UtcOnlyDate);
     try {
-      vi.setSystemTime(new Date("2026-10-19T23:30:00Z"));
       expect(getEvaluationDate()).toBe("2026-10-19");
     } finally {
-      vi.useRealTimers();
+      vi.unstubAllGlobals();
     }
   });
 
