@@ -197,7 +197,7 @@ type ConsentRequest = {
 
 `Scenario` is the complete request shape for decision and creation calls. The evaluation date is server-owned: it is injected once per request and is absent from the request body. A request that supplies an evaluation date is rejected as `validation_error` rather than having the value ignored. Jurisdiction input is trimmed and uppercased, then checked for a jurisdiction code shape (`^[A-Z]{2}(-[A-Z0-9]{1,3})?$`); malformed values are `validation_error` and never fall through to `*`. A well-formed but unknown jurisdiction follows the normal lookup and may match `*` or end in `no_matching_policy`.
 
-`policy.json` is the external configuration shape (`min_age`, `if_under`). The loader validates it once and maps it to the camel-case domain type above; routes and UI do not perform their own conversion.
+[`policy.json`](../src/data/policy.json) is the external configuration shape (`min_age`, `if_under`). The loader validates it once and maps it to the camel-case domain type above; routes and UI do not perform their own conversion.
 
 ### Response semantics
 
@@ -444,8 +444,8 @@ Each brief requirement maps to delivered evidence:
 | Parent approve, decline, and reversal | Service tests and one complete Playwright journey |
 | Answers stay right | Precedence, birthday, scope-isolation, and hard-block regression tests |
 | A couple of meaningful tests | Non-empty suites at the layers above; CI must fail when they fail |
-| `DECISIONS.md` | Final choices, rationale, trade-offs, and skipped work match the code |
-| `AI-USE.md` | Actual tools, accepted contributions, rejected output, and corrections |
+| [`DECISIONS.md`](../DECISIONS.md) | Final choices, rationale, trade-offs, and skipped work match the code |
+| [`AI-USE.md`](../AI-USE.md) | Actual tools, accepted contributions, rejected output, and corrections |
 | README run instructions | Clean install, build, test, and start verified from the reviewed commit |
 
 ## 6. Production boundary

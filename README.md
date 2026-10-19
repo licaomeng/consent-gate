@@ -12,7 +12,7 @@ Given a subject id, date of birth, jurisdiction, and requested feature, the serv
 
 - **Core path:** evaluate access → raise a request → parent acts → evaluate again.
 - **Safety boundary:** consent may satisfy a consent-eligible rule, but it never overrides a hard block.
-- **Source of truth:** the server validates and evaluates the exercise policy in `src/data/policy.json`; the browser displays the result and its evidence.
+- **Source of truth:** the server validates and evaluates the exercise policy in [`src/data/policy.json`](src/data/policy.json); the browser displays the result and its evidence.
 - **Scope:** one Next.js app and an in-memory store. Durable identity, storage, audit, and concurrency are documented, not claimed.
 
 ## Review path
@@ -25,15 +25,15 @@ Then read [`docs/DESIGN.md`](docs/DESIGN.md) for the contracts. The map below co
 
 | Path | Contents |
 |---|---|
-| `src/domain/` | Pure policy, age, decision, and consent rules; no framework or I/O |
-| `src/services/` | Decision and consent orchestration over the repository contract |
-| `src/repository/` | In-memory consent store behind an interface |
-| `src/app/` | Next.js page, layout, and the `/api/v1` route handlers |
-| `src/components/` | Client UI: page controller, decision card, and help tooltip |
-| `src/data/policy.json` | The rule set from the brief; validated at startup |
-| `tests/` | Vitest unit, service, API, and application tests |
-| `e2e/` | Playwright journeys against a production build |
-| `tools/` | Reproducible HTTP smoke and mutation checks |
+| [`src/domain/`](src/domain/) | Pure policy, age, decision, and consent rules; no framework or I/O |
+| [`src/services/`](src/services/) | Decision and consent orchestration over the repository contract |
+| [`src/repository/`](src/repository/) | In-memory consent store behind an interface |
+| [`src/app/`](src/app/) | Next.js page, layout, and the `/api/v1` route handlers |
+| [`src/components/`](src/components/) | Client UI: page controller, decision card, and help tooltip |
+| [`src/data/policy.json`](src/data/policy.json) | The rule set from the brief; validated at startup |
+| [`tests/`](tests/) | Vitest unit, service, API, and application tests |
+| [`e2e/`](e2e/) | Playwright journeys against a production build |
+| [`tools/`](tools/) | Reproducible HTTP smoke and mutation checks |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture, API, UI, accessibility, and test contracts |
 | [`docs/PRODUCTION_NOTES.md`](docs/PRODUCTION_NOTES.md) | Deferred production design: storage, concurrency, trust boundary |
 | [`docs/EXERCISE_BRIEF.md`](docs/EXERCISE_BRIEF.md) | The original prompt, preserved unchanged |
