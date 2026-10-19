@@ -145,7 +145,7 @@ One logical record exists for `subjectId + jurisdiction + feature`:
 - repeating its current status returns the same representation;
 - a reversal changes what the next access check returns.
 
-Creation resolves the consent scope first. If a record already exists, it is returned unchanged as the idempotent result. If none exists, the server evaluates the winning rule without assuming consent and creates a pending request only when that rule is under-age and consent-eligible; otherwise it returns `consent_not_required`.
+Creation resolves the consent scope first. If a record already exists, it is returned unchanged as the idempotent result. If none exists, the server evaluates the winning rule without assuming consent and creates a pending request only when that rule is under-age and consent-eligible; otherwise it returns `consent_not_required`. The repository's write reports whether it inserted the record, so the `201`/`200` distinction comes from the write rather than from the earlier lookup.
 
 Audit history and concurrent updates across processes are production concerns, not exercise guarantees.
 
@@ -242,6 +242,7 @@ Errors use `{ "error": { "code": string, "message": string } }`. Reason codes ex
 | `404` | `request_not_found` | Consent request ID does not exist |
 | `409` | `consent_not_required` | Current policy does not permit creating a consent request |
 | `503` | `dependency_unavailable` | Required consent state cannot be read or written safely |
+| `500` | `internal_error` | Unexpected failure; internal details are never returned to the client |
 
 `no_matching_policy` is a successful, fail-closed decision, not an HTTP error.
 
